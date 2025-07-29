@@ -13,7 +13,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title, subtitle }) 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-neutral-50 flex overflow-hidden">
+    <div className="min-h-screen bg-neutral-50 flex">
       <Sidebar
         isCollapsed={sidebarCollapsed}
         onToggleCollapse={() => setSidebarCollapsed(!sidebarCollapsed)}
@@ -21,14 +21,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title, subtitle }) 
         onMobileToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
       
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
         <Header
           onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
           title={title}
           subtitle={subtitle}
         />
         
-        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6">
           {children}
         </main>
       </div>

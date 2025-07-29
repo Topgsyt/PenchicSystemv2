@@ -90,13 +90,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className={`
-          fixed lg:relative top-0 left-0 h-full bg-white border-r border-neutral-200 z-50 flex flex-col
+          fixed lg:sticky lg:top-0 left-0 h-screen lg:h-screen bg-white border-r border-neutral-200 z-50 flex flex-col
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           shadow-xl lg:shadow-none
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 lg:p-6 border-b border-neutral-200 min-h-[64px] lg:min-h-[80px]">
+        <div className="flex items-center justify-between p-4 lg:p-6 border-b border-neutral-200 min-h-[64px] lg:min-h-[80px] flex-shrink-0">
           <AnimatePresence mode="wait">
             {!isCollapsed && (
               <motion.div
@@ -136,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 lg:p-4 space-y-1 lg:space-y-2 overflow-y-auto">
+        <nav className="flex-1 p-3 lg:p-4 space-y-1 lg:space-y-2 overflow-y-auto min-h-0">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path, item.exact);
@@ -176,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* User Profile Section */}
-        <div className="p-3 lg:p-4 border-t border-neutral-200">
+        <div className="p-3 lg:p-4 border-t border-neutral-200 flex-shrink-0">
           <div
             className={`min-h-[44px] flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-100 transition-colors ${
               isCollapsed ? 'justify-center' : ''
