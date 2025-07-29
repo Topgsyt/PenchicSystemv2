@@ -40,6 +40,7 @@ const POSInterface = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTransaction, setLastTransaction] = useState(null);
+  const [quantityInput, setQuantityInput] = useState({});
 
   useEffect(() => {
     if (!user || !['admin', 'worker'].includes(user.role)) {
@@ -98,18 +99,40 @@ const POSInterface = () => {
   };
 
   const addToCart = (product) => {
+    const quantity = parseInt(quantityInput[product.id]) || 1;
+    
     setCart((prevCart) => {
       const existingItem = prevCart.find((item) => item.id === product.id);
       if (existingItem) {
-        if (existingItem.quantity >= product.stock) {
+        const newQuantity = existingItem.quantity + quantity;
+        if (newQuantity > product.stock) {
+          alert(`Only ${product.stock - existingItem.quantity} more units available`);
           return prevCart;
         }
         return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === product.id ? { ...item, quantity: newQuantity } : item
         );
       }
-      return [...prevCart, { ...product, quantity: 1 }];
+      if (quantity > product.stock) {
+        alert(`Only ${product.stock} units available`);
+        return prevCart;
+      }
+      return [...prevCart, { ...product, quantity }];
     });
+    
+    // Reset quantity input
+    setQuantityInput(prev => ({ ...prev, [product.id]: '' }));
+  };
+
+  const handleQuantityInputChange = (productId, value) => {
+    const numValue = parseInt(value);
+    const product = products.find(p => p.id === productId);
+    
+    if (product && numValue > product.stock) {
+      setQuantityInput(prev => ({ ...prev, [productId]: product.stock.toString() }));
+    } else {
+      setQuantityInput(prev => ({ ...prev, [productId]: value }));
+    }
   };
 
   const updateQuantity = (productId, change) => {
@@ -337,16 +360,18 @@ const POSInterface = () => {
                     key={product.id}
                     whileHover={{ scale: viewMode === 'grid' ? 1.02 : 1 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => addToCart(product)}
                     className={`
-                      bg-white rounded-xl border border-neutral-200 cursor-pointer transition-all hover:shadow-md
+                      bg-white rounded-xl border border-neutral-200 transition-all hover:shadow-md
                       ${viewMode === 'grid' ? 'p-3' : 'p-3 flex items-center gap-4'}
                       ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                   >
                     {viewMode === 'grid' ? (
                       <>
-                        <div className="aspect-square bg-neutral-100 rounded-lg mb-2 overflow-hidden">
+                        <div 
+                          className="aspect-square bg-neutral-100 rounded-lg mb-2 overflow-hidden cursor-pointer"
+                          onClick={() => product.stock > 0 && addToCart(product)}
+                        >
                           <img
                             src={product.image_url}
                             alt={product.name}
@@ -367,10 +392,64 @@ const POSInterface = () => {
                             {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
                           </p>
                         </div>
+                        
+                        {/* Quantity Input for Grid View */}
+                        {product.stock > 0 && (
+                          <div className="mt-2 space-y-2">
+                            <div className="flex items-center bg-neutral-50 rounded-lg border border-neutral-200">
+                              <button
+                                onClick={() => {
+                                  const currentQty = parseInt(quantityInput[product.id]) || 1;
+                                  if (currentQty > 1) {
+                                    setQuantityInput(prev => ({ 
+                                      ...prev, 
+                                      [product.id]: (currentQty - 1).toString() 
+                                    }));
+                                  }
+                                }}
+                                className="p-2 hover:bg-neutral-200 rounded-l-lg transition-colors"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <input
+                                type="number"
+                                value={quantityInput[product.id] || '1'}
+                                onChange={(e) => handleQuantityInputChange(product.id, e.target.value)}
+                                className="w-12 text-center bg-transparent text-sm border-none focus:outline-none"
+                                min="1"
+                                max={product.stock}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <button
+                                onClick={() => {
+                                  const currentQty = parseInt(quantityInput[product.id]) || 1;
+                                  if (currentQty < product.stock) {
+                                    setQuantityInput(prev => ({ 
+                                      ...prev, 
+                                      [product.id]: (currentQty + 1).toString() 
+                                    }));
+                                  }
+                                }}
+                                className="p-2 hover:bg-neutral-200 rounded-r-lg transition-colors"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={() => addToCart(product)}
+                              className="w-full py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-sm font-medium"
+                            >
+                              Add to Cart
+                            </button>
+                          </div>
+                        )}
                       </>
                     ) : (
                       <>
-                        <div className="w-16 h-16 bg-neutral-100 rounded-lg overflow-hidden flex-shrink-0">
+                        <div 
+                          className="w-16 h-16 bg-neutral-100 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer"
+                          onClick={() => product.stock > 0 && addToCart(product)}
+                        >
                           <img
                             src={product.image_url}
                             alt={product.name}
@@ -390,6 +469,65 @@ const POSInterface = () => {
                             </p>
                           </div>
                         </div>
+                        
+                        {/* Quantity Input for List View */}
+                        {product.stock > 0 && (
+                          <div className="flex items-center gap-2 ml-4">
+                            <div className="flex items-center bg-neutral-50 rounded-lg border border-neutral-200">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const currentQty = parseInt(quantityInput[product.id]) || 1;
+                                  if (currentQty > 1) {
+                                    setQuantityInput(prev => ({ 
+                                      ...prev, 
+                                      [product.id]: (currentQty - 1).toString() 
+                                    }));
+                                  }
+                                }}
+                                className="p-1.5 hover:bg-neutral-200 rounded-l-lg transition-colors"
+                              >
+                                <Minus className="w-3 h-3" />
+                              </button>
+                              <input
+                                type="number"
+                                value={quantityInput[product.id] || '1'}
+                                onChange={(e) => {
+                                  e.stopPropagation();
+                                  handleQuantityInputChange(product.id, e.target.value);
+                                }}
+                                className="w-10 text-center bg-transparent text-xs border-none focus:outline-none"
+                                min="1"
+                                max={product.stock}
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const currentQty = parseInt(quantityInput[product.id]) || 1;
+                                  if (currentQty < product.stock) {
+                                    setQuantityInput(prev => ({ 
+                                      ...prev, 
+                                      [product.id]: (currentQty + 1).toString() 
+                                    }));
+                                  }
+                                }}
+                                className="p-1.5 hover:bg-neutral-200 rounded-r-lg transition-colors"
+                              >
+                                <Plus className="w-3 h-3" />
+                              </button>
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                addToCart(product);
+                              }}
+                              className="px-3 py-1.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors text-xs font-medium"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        )}
                       </>
                     )}
                   </motion.div>
@@ -400,7 +538,7 @@ const POSInterface = () => {
         </div>
 
         {/* Cart Panel */}
-        <div className={`${isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-sm lg:max-w-md'} bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0`}>
+        <div className={`${isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'} bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0`}>
           <div className="p-4 border-b border-neutral-200 flex-shrink-0">
             <div className="flex items-center justify-between mb-4">
               <h2 className="text-lg font-bold text-neutral-900">Current Order</h2>
@@ -651,30 +789,46 @@ const POSInterface = () => {
               className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
             >
               <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <div className="w-12 h-12 sm:w-16 sm:h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
-                <h2 className="text-xl font-bold text-neutral-900 mb-2">Payment Successful!</h2>
+                <h2 className="text-lg sm:text-xl font-bold text-neutral-900 mb-2">Payment Successful!</h2>
                 <p className="text-neutral-600">Transaction completed successfully</p>
               </div>
 
-              <div className="bg-neutral-50 rounded-lg p-4 mb-6">
+              <div className="bg-neutral-50 rounded-lg p-3 sm:p-4 mb-6">
                 <div className="text-center mb-4">
-                  <h3 className="font-bold text-lg">Penchic Farm</h3>
-                  <p className="text-sm text-neutral-600">Receipt #{lastTransaction.orderId.slice(0, 8)}</p>
-                  <p className="text-xs text-neutral-500">{lastTransaction.timestamp.toLocaleString()}</p>
+                  <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center mx-auto mb-2">
+                    <ShoppingCart className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="font-bold text-base sm:text-lg text-primary">Penchic Farm</h3>
+                  <p className="text-xs text-neutral-600">Limuru, Kiambu County, Kenya</p>
+                  <p className="text-xs text-neutral-600">+254 722 395 370 | info@penchicfarm.com</p>
+                  <div className="border-t border-neutral-200 mt-3 pt-3">
+                    <p className="text-sm font-medium text-neutral-900">Receipt #{lastTransaction.orderId.slice(0, 8)}</p>
+                    <p className="text-xs text-neutral-500">{lastTransaction.timestamp.toLocaleString()}</p>
+                    <p className="text-xs text-neutral-500">Cashier: {user?.email}</p>
+                  </div>
                 </div>
 
-                <div className="space-y-2 mb-4">
+                <div className="space-y-1 mb-4">
+                  <div className="flex justify-between text-xs font-medium text-neutral-700 border-b border-neutral-200 pb-1">
+                    <span>Item</span>
+                    <span>Qty</span>
+                    <span>Price</span>
+                    <span>Total</span>
+                  </div>
                   {lastTransaction.items.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{item.name} x{item.quantity}</span>
-                      <span>KES {(item.price * item.quantity).toLocaleString()}</span>
+                    <div key={index} className="grid grid-cols-4 gap-1 text-xs">
+                      <span className="truncate">{item.name}</span>
+                      <span className="text-center">{item.quantity}</span>
+                      <span className="text-right">{item.price.toLocaleString()}</span>
+                      <span className="text-right font-medium">{(item.price * item.quantity).toLocaleString()}</span>
                     </div>
                   ))}
                 </div>
 
-                <div className="border-t border-neutral-200 pt-3 space-y-1">
+                <div className="border-t border-neutral-200 pt-2 space-y-1">
                   <div className="flex justify-between text-sm">
                     <span>Subtotal:</span>
                     <span>KES {lastTransaction.totals.subtotal.toLocaleString()}</span>
@@ -683,20 +837,25 @@ const POSInterface = () => {
                     <span>Tax:</span>
                     <span>KES {lastTransaction.totals.tax.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between font-bold">
+                  <div className="flex justify-between font-bold text-base border-t border-neutral-200 pt-2">
                     <span>Total:</span>
                     <span>KES {lastTransaction.totals.total.toLocaleString()}</span>
                   </div>
-                  <div className="flex justify-between text-sm text-neutral-600">
+                  <div className="flex justify-between text-xs text-neutral-600 mt-2">
                     <span>Payment:</span>
                     <span>{lastTransaction.paymentMethod.toUpperCase()}</span>
                   </div>
                   {lastTransaction.cashAmount && (
-                    <div className="flex justify-between text-sm text-neutral-600">
+                    <div className="flex justify-between text-xs text-neutral-600">
                       <span>Change:</span>
                       <span>KES {(lastTransaction.cashAmount - lastTransaction.totals.total).toLocaleString()}</span>
                     </div>
                   )}
+                </div>
+                
+                <div className="text-center mt-4 pt-3 border-t border-neutral-200">
+                  <p className="text-xs text-neutral-500 mb-1">Thank you for your business!</p>
+                  <p className="text-xs text-neutral-400">Visit us again soon</p>
                 </div>
               </div>
 
