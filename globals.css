@@ -1,0 +1,10 @@
+/* When fullscreen mode active, hide navbar/footer - you can adjust these selectors */
+.pos-fullscreen-mode nav,
+.pos-fullscreen-mode footer {
+  display: none !important;
+}
+
+/* Also prevent body scroll */
+.pos-fullscreen-mode {
+  overflow: hidden;
+}

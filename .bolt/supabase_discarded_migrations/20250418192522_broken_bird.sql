@@ -1,0 +1,2 @@
+-- This migration is deprecated and should be empty to avoid conflicts
+-- The updated schema is in 20250418192411_frosty_wave.sql
