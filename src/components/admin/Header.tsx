@@ -12,16 +12,13 @@ import {
   AlertCircle,
   Info,
   Clock,
-  ChevronDown,
-  Bell,
-  Wifi,
-  WifiOff
+  ChevronDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import { useRealTimeNotifications } from '../../hooks/useRealTimeNotifications';
+import RealTimeNotifications from './RealTimeNotifications';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
@@ -51,15 +48,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
   
   const accountRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
-
-  const {
-    notifications,
-    unreadCount,
-    markAsRead,
-    markAllAsRead,
-    clearAll,
-    isConnected
-  } = useRealTimeNotifications();
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -192,14 +180,14 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
   };
 
   return (
-    <header className="bg-white border-b border-neutral-200 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 sticky top-0 z-40 shadow-sm">
+    <header className="bg-white border-b border-neutral-200 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 sticky top-0 z-40">
       <div className="flex items-center justify-between">
         {/* Left Section */}
         <div className="flex items-center gap-2 sm:gap-4">
           {/* Mobile Menu Button */}
           <button
             onClick={onMobileMenuToggle}
-            className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
+            className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg transition-colors"
           >
             <Menu className="w-5 h-5 text-neutral-600" />
           </button>
@@ -207,7 +195,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
           {/* Page Title */}
           {title && (
             <div className="hidden sm:block">
-              <h1 className="text-xl lg:text-2xl font-bold text-neutral-900">{title}</h1>
+              <h1 className="text-2xl font-bold text-neutral-900">{title}</h1>
               {subtitle && (
                 <p className="text-sm text-neutral-600 mt-1">{subtitle}</p>
               )}
@@ -290,7 +278,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
           <motion.button
             whileTap={{ scale: 0.95 }}
             onClick={() => setIsDarkMode(!isDarkMode)}
-            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
+            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
           >
             {isDarkMode ? (
               <Sun className="w-5 h-5 text-neutral-600" />
@@ -299,45 +287,15 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             )}
           </motion.button>
 
-          {/* Notifications */}
-          <div className="relative">
-            <motion.button
-              whileTap={{ scale: 0.95 }}
-              className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
-            >
-              <Bell className="w-5 h-5 text-neutral-600" />
-              
-              {/* Connection Status */}
-              <div className="absolute -bottom-1 -right-1">
-                {isConnected ? (
-                  <Wifi className="w-3 h-3 text-green-500" />
-                ) : (
-                  <WifiOff className="w-3 h-3 text-red-500" />
-                )}
-              </div>
-
-              {/* Unread Count Badge */}
-              <AnimatePresence>
-                {unreadCount > 0 && (
-                  <motion.span
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    exit={{ scale: 0 }}
-                    className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 font-medium"
-                  >
-                    {unreadCount > 99 ? '99+' : unreadCount}
-                  </motion.span>
-                )}
-              </AnimatePresence>
-            </motion.button>
-          </div>
+          {/* Real-time Notifications */}
+          <RealTimeNotifications />
 
           {/* Account Menu */}
           <div className="relative" ref={accountRef}>
             <motion.button
               whileTap={{ scale: 0.95 }}
               onClick={() => setShowAccountMenu(!showAccountMenu)}
-              className="flex items-center gap-1 sm:gap-2 p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
+              className="flex items-center gap-1 sm:gap-2 p-2 hover:bg-neutral-100 rounded-lg transition-colors"
             >
               <div className="w-7 h-7 sm:w-8 sm:h-8 bg-primary rounded-full flex items-center justify-center">
                 <span className="text-white text-sm font-medium">
@@ -374,7 +332,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
                         navigate('/admin/settings');
                         setShowAccountMenu(false);
                       }}
-                      className="w-full px-4 py-2 text-left hover:bg-neutral-50 transition-colors flex items-center gap-3 touch-target"
+                      className="w-full px-4 py-2 text-left hover:bg-neutral-50 transition-colors flex items-center gap-3"
                     >
                       <User className="w-4 h-4 text-neutral-500" />
                       <span className="text-sm text-neutral-700">Profile Settings</span>
@@ -384,7 +342,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
                         navigate('/admin/settings');
                         setShowAccountMenu(false);
                       }}
-                      className="w-full px-4 py-2 text-left hover:bg-neutral-50 transition-colors flex items-center gap-3 touch-target"
+                      className="w-full px-4 py-2 text-left hover:bg-neutral-50 transition-colors flex items-center gap-3"
                     >
                       <Settings className="w-4 h-4 text-neutral-500" />
                       <span className="text-sm text-neutral-700">Preferences</span>
@@ -393,7 +351,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
                   <div className="border-t border-neutral-200 py-2">
                     <button
                       onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left hover:bg-red-50 transition-colors flex items-center gap-3 text-red-600 touch-target"
+                      className="w-full px-4 py-2 text-left hover:bg-red-50 transition-colors flex items-center gap-3 text-red-600"
                     >
                       <LogOut className="w-4 h-4" />
                       <span className="text-sm">Sign Out</span>
