@@ -14,7 +14,7 @@ import {
   ChevronRight,
   LogOut,
   User,
-  Package2,
+  Package2, // ✅ FIX: Add missing icon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store';
@@ -90,12 +90,13 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className={`
-          fixed lg:sticky lg:top-0 left-0 h-screen bg-white border-r border-neutral-200 z-50 flex flex-col shadow-xl lg:shadow-none
+          fixed lg:relative top-0 left-0 h-full bg-white border-r border-neutral-200 z-50 flex flex-col
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          shadow-xl lg:shadow-none
         `}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 lg:p-6 border-b border-neutral-200 min-h-[64px] lg:min-h-[80px] flex-shrink-0">
+        <div className="flex items-center justify-between p-4 lg:p-6 border-b border-neutral-200 min-h-[64px] lg:min-h-[80px]">
           <AnimatePresence mode="wait">
             {!isCollapsed && (
               <motion.div
@@ -106,7 +107,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 className="flex items-center gap-2 lg:gap-3"
               >
                 <div className="w-6 h-6 lg:w-8 lg:h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Store className="w-4 h-4 lg:w-5 lg:h-5 text-white" />
+                  <Store className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-lg lg:text-xl font-bold text-neutral-900">Penchic</span>
               </motion.div>
@@ -116,7 +117,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* Mobile Close Button */}
           <button
             onClick={onMobileToggle}
-            className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
+            className="lg:hidden p-2 hover:bg-neutral-100 rounded-lg transition-colors"
           >
             <X className="w-5 h-5 text-neutral-600" />
           </button>
@@ -124,7 +125,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* Desktop Collapse Toggle */}
           <button
             onClick={onToggleCollapse}
-            className="hidden lg:flex p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
+            className="hidden lg:flex p-2 hover:bg-neutral-100 rounded-lg transition-colors"
           >
             {isCollapsed ? (
               <ChevronRight className="w-5 h-5 text-neutral-600" />
@@ -135,7 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 lg:p-4 space-y-1 lg:space-y-2 overflow-y-auto min-h-0">
+        <nav className="flex-1 p-3 lg:p-4 space-y-1 lg:space-y-2 overflow-y-auto">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path, item.exact);
@@ -145,7 +146,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                 key={item.path}
                 to={item.path}
                 onClick={() => window.innerWidth < 1024 && onMobileToggle()}
-                className={`min-h-[44px] flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 touch-target
+                className={`min-h-[44px]
+                  flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
                   ${
                     active
                       ? 'bg-primary text-white shadow-lg shadow-primary/25'
@@ -174,7 +176,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </nav>
 
         {/* User Profile Section */}
-        <div className="p-3 lg:p-4 border-t border-neutral-200 flex-shrink-0">
+        <div className="p-3 lg:p-4 border-t border-neutral-200">
           <div
             className={`min-h-[44px] flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-100 transition-colors ${
               isCollapsed ? 'justify-center' : ''
@@ -213,7 +215,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 transition={{ duration: 0.2 }}
                 onClick={handleLogout}
                 disabled={isLoggingOut}
-                className="w-full mt-2 flex items-center gap-3 px-3 py-2 text-xs lg:text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 min-h-[44px] touch-target"
+                className="w-full mt-2 flex items-center gap-3 px-3 py-2 text-xs lg:text-sm text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 min-h-[44px]"
               >
                 <LogOut className="w-4 h-4" />
                 {isLoggingOut ? 'Logging out...' : 'Logout'}
