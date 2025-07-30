@@ -3,33 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { supabase } from '../../lib/supabase';
-import {
-  Building2,
-  Receipt,
-  Percent,
-  DollarSign,
-  Save,
-  Plus,
-  Trash2,
-  Edit2,
-  X,
-  Check,
-  AlertCircle,
-  Settings as SettingsIcon,
-  Phone,
-  Mail,
-  MapPin,
-  Palette,
-  Type,
-  Layout,
-  Bell,
-  Monitor,
-  Sun,
-  Moon,
-  Smartphone,
-  Tablet,
-  Desktop
-} from 'lucide-react';
+import { Building2, Receipt, Percent, DollarSign, Save, Plus, Trash2, Edit2, X, Check, AlertCircle, Settings as SettingsIcon, Phone, Mail, MapPin, Palette, Type, Layout, Bell, Monitor, Sun, Moon, Smartphone, Tablet, LampDesk as Desktop } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface BusinessSettings {
