@@ -29,10 +29,10 @@ const UserManagement = () => {
     try {
       const { data, error } = await supabase
         .from('profiles')
-        .select(
+        .select(`
           *,
           orders(count)
-        )
+        `)
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
       if (error) throw error;
@@ -88,7 +88,7 @@ const UserManagement = () => {
       alert('User created successfully!');
     } catch (error) {
       console.error('Error adding user:', error);
-      alert(Error adding user: ${error.message});
+      alert(`Error adding user: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -108,7 +108,7 @@ const UserManagement = () => {
       alert('User role updated successfully!');
     } catch (error) {
       console.error('Error updating role:', error);
-      alert(Error updating role: ${error.message});
+      alert(`Error updating role: ${error.message}`);
     }
   };
 
@@ -126,7 +126,7 @@ const UserManagement = () => {
       alert('User deleted successfully!');
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(Error deleting user: ${error.message});
+      alert(`Error deleting user: ${error.message}`);
     }
   };
 
@@ -151,6 +151,7 @@ const UserManagement = () => {
     }
     fetchUsers();
   };
+
   if (loading && !showAddForm) {
     return (
       <AdminLayout title="User Management" subtitle="Manage system users and permissions">
@@ -174,14 +175,14 @@ const UserManagement = () => {
                 placeholder="Search users by email..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
               />
             </div>
             
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="px-4 py-3 bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+              className="px-4 py-3 bg-white border border-neutral-200 rounded-xl text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
             >
               <option value="all">All Roles</option>
               <option value="admin">Admin</option>
@@ -194,13 +195,12 @@ const UserManagement = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => setShowAddForm(!showAddForm)}
-            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors shadow-lg"
+            className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors shadow-lg touch-target"
           >
             <UserPlus className="w-5 h-5" />
             Add User
           </motion.button>
         </div>
-            </div>
 
         {/* Add User Form */}
         <AnimatePresence>
@@ -223,7 +223,7 @@ const UserManagement = () => {
                         type="email"
                         value={newUser.email}
                         onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                         placeholder="user@example.com"
                         required
                       />
@@ -236,7 +236,7 @@ const UserManagement = () => {
                         type="password"
                         value={newUser.password}
                         onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                         placeholder="Minimum 6 characters"
                         required
                       />
@@ -248,7 +248,7 @@ const UserManagement = () => {
                       <select
                         value={newUser.role}
                         onChange={(e) => setNewUser({ ...newUser, role: e.target.value })}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                       >
                         <option value="customer">Customer</option>
                         <option value="worker">Worker</option>
@@ -261,14 +261,14 @@ const UserManagement = () => {
                     <button
                       type="button"
                       onClick={() => setShowAddForm(false)}
-                      className="px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors"
+                      className="px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors touch-target"
                     >
                       Cancel
                     </button>
                     <button
                       type="submit"
                       disabled={loading}
-                      className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                     >
                       {loading ? 'Creating...' : 'Create User'}
                     </button>
@@ -288,7 +288,7 @@ const UserManagement = () => {
                   <th className="text-left p-4 font-medium text-neutral-900">
                     <button
                       onClick={() => handleSort('email')}
-                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                      className="flex items-center gap-2 hover:text-primary transition-colors touch-target"
                     >
                       <Mail className="w-4 h-4" />
                       Email
@@ -300,7 +300,7 @@ const UserManagement = () => {
                   <th className="text-left p-4 font-medium text-neutral-900">
                     <button
                       onClick={() => handleSort('role')}
-                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                      className="flex items-center gap-2 hover:text-primary transition-colors touch-target"
                     >
                       <Shield className="w-4 h-4" />
                       Role
@@ -312,7 +312,7 @@ const UserManagement = () => {
                   <th className="text-left p-4 font-medium text-neutral-900">
                     <button
                       onClick={() => handleSort('created_at')}
-                      className="flex items-center gap-2 hover:text-primary transition-colors"
+                      className="flex items-center gap-2 hover:text-primary transition-colors touch-target"
                     >
                       <Calendar className="w-4 h-4" />
                       Joined
@@ -349,13 +349,13 @@ const UserManagement = () => {
                       <select
                         value={user.role}
                         onChange={(e) => handleUpdateRole(user.id, e.target.value)}
-                        className={px-3 py-1.5 rounded-full text-sm font-medium border-0 focus:ring-2 focus:ring-primary/20 ${
+                        className={`px-3 py-1.5 rounded-full text-sm font-medium border-0 focus:ring-2 focus:ring-primary/20 touch-target ${
                           user.role === 'admin' 
                             ? 'bg-red-100 text-red-700' 
                             : user.role === 'worker'
                             ? 'bg-blue-100 text-blue-700'
                             : 'bg-green-100 text-green-700'
-                        }}
+                        }`}
                       >
                         <option value="customer">Customer</option>
                         <option value="worker">Worker</option>
@@ -386,14 +386,14 @@ const UserManagement = () => {
                       <div className="flex items-center justify-end gap-2">
                         <button
                           onClick={() => setShowUserDetails(showUserDetails === user.id ? null : user.id)}
-                          className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                          className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
                           title="View details"
                         >
                           {showUserDetails === user.id ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                         </button>
                         <button
                           onClick={() => handleDeleteUser(user.id)}
-                          className="p-2 hover:bg-red-50 rounded-lg text-red-500 transition-colors"
+                          className="p-2 hover:bg-red-50 rounded-lg text-red-500 transition-colors touch-target"
                           title="Delete user"
                         >
                           <Trash2 className="w-4 h-4" />
@@ -430,7 +430,7 @@ const UserManagement = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                   disabled={currentPage === 1}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -442,11 +442,11 @@ const UserManagement = () => {
                       <button
                         key={pageNum}
                         onClick={() => setCurrentPage(pageNum)}
-                        className={px-3 py-1.5 rounded-lg text-sm transition-colors ${
+                        className={`px-3 py-1.5 rounded-lg text-sm transition-colors touch-target ${
                           currentPage === pageNum
                             ? 'bg-primary text-white'
                             : 'hover:bg-neutral-100 text-neutral-700'
-                        }}
+                        }`}
                       >
                         {pageNum}
                       </button>
@@ -457,7 +457,7 @@ const UserManagement = () => {
                 <button
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                   disabled={currentPage === totalPages}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>

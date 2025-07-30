@@ -18,7 +18,17 @@ import {
   Settings as SettingsIcon,
   Phone,
   Mail,
-  MapPin
+  MapPin,
+  Palette,
+  Type,
+  Layout,
+  Bell,
+  Monitor,
+  Sun,
+  Moon,
+  Smartphone,
+  Tablet,
+  Desktop
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -48,6 +58,21 @@ interface Discount {
   created_at: string;
 }
 
+interface AppSettings {
+  theme: 'light' | 'dark' | 'auto';
+  colorScheme: string;
+  fontSize: 'small' | 'medium' | 'large';
+  dashboardLayout: 'compact' | 'comfortable' | 'spacious';
+  notifications: {
+    orders: boolean;
+    stock: boolean;
+    users: boolean;
+    system: boolean;
+  };
+  language: string;
+  timezone: string;
+}
+
 const Settings = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
@@ -63,6 +88,22 @@ const Settings = () => {
     email: 'info@penchicfarm.com',
     tax_id: 'P051234567A',
     logo_url: ''
+  });
+
+  // App Settings
+  const [appSettings, setAppSettings] = useState<AppSettings>({
+    theme: 'light',
+    colorScheme: '#2B5741',
+    fontSize: 'medium',
+    dashboardLayout: 'comfortable',
+    notifications: {
+      orders: true,
+      stock: true,
+      users: true,
+      system: true,
+    },
+    language: 'en',
+    timezone: 'Africa/Nairobi'
   });
 
   // Tax Rates
@@ -92,6 +133,7 @@ const Settings = () => {
       return;
     }
     fetchSettings();
+    loadAppSettings();
   }, [user, navigate]);
 
   const fetchSettings = async () => {
@@ -115,9 +157,63 @@ const Settings = () => {
       if (!discountError && discountData) {
         setDiscounts(discountData);
       }
+
+      // Fetch business settings
+      const { data: businessData, error: businessError } = await supabase
+        .from('business_settings')
+        .select('*')
+        .single();
+
+      if (!businessError && businessData) {
+        setBusinessSettings(businessData);
+      }
     } catch (error) {
       console.error('Error fetching settings:', error);
     }
+  };
+
+  const loadAppSettings = () => {
+    try {
+      const stored = localStorage.getItem('app_settings');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setAppSettings({ ...appSettings, ...parsed });
+        applySettings({ ...appSettings, ...parsed });
+      }
+    } catch (error) {
+      console.error('Error loading app settings:', error);
+    }
+  };
+
+  const applySettings = (settings: AppSettings) => {
+    // Apply theme
+    document.documentElement.setAttribute('data-theme', settings.theme);
+    
+    // Apply color scheme
+    document.documentElement.style.setProperty('--primary-color', settings.colorScheme);
+    
+    // Apply font size
+    const fontSizes = {
+      small: '14px',
+      medium: '16px',
+      large: '18px'
+    };
+    document.documentElement.style.setProperty('--base-font-size', fontSizes[settings.fontSize]);
+    
+    // Apply layout spacing
+    const layoutSpacing = {
+      compact: '0.5rem',
+      comfortable: '1rem',
+      spacious: '1.5rem'
+    };
+    document.documentElement.style.setProperty('--layout-spacing', layoutSpacing[settings.dashboardLayout]);
+  };
+
+  const saveAppSettings = (newSettings: AppSettings) => {
+    setAppSettings(newSettings);
+    localStorage.setItem('app_settings', JSON.stringify(newSettings));
+    applySettings(newSettings);
+    showMessage('success', 'Settings applied successfully!');
   };
 
   const showMessage = (type: 'success' | 'error', text: string) => {
@@ -128,7 +224,11 @@ const Settings = () => {
   const handleBusinessSave = async () => {
     setLoading(true);
     try {
-      // In a real app, you'd save to a business_settings table
+      const { error } = await supabase
+        .from('business_settings')
+        .upsert(businessSettings);
+
+      if (error) throw error;
       showMessage('success', 'Business settings saved successfully!');
     } catch (error) {
       showMessage('error', 'Failed to save business settings');
@@ -250,10 +350,21 @@ const Settings = () => {
     }
   };
 
+  const colorSchemes = [
+    { name: 'Forest Green', value: '#2B5741' },
+    { name: 'Ocean Blue', value: '#1e40af' },
+    { name: 'Purple', value: '#7c3aed' },
+    { name: 'Emerald', value: '#059669' },
+    { name: 'Rose', value: '#e11d48' },
+    { name: 'Orange', value: '#ea580c' },
+  ];
+
   const tabs = [
+    { id: 'appearance', label: 'Appearance', icon: Palette },
     { id: 'business', label: 'Business Info', icon: Building2 },
     { id: 'tax', label: 'Tax Rates', icon: DollarSign },
     { id: 'discounts', label: 'Discounts', icon: Percent },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'receipt', label: 'Receipt', icon: Receipt }
   ];
 
@@ -291,7 +402,7 @@ const Settings = () => {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`flex items-center gap-2 px-4 sm:px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors ${
+                  className={`flex items-center gap-2 px-4 sm:px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors touch-target ${
                     activeTab === tab.id
                       ? 'text-primary border-b-2 border-primary bg-primary/5'
                       : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
@@ -305,6 +416,152 @@ const Settings = () => {
           </div>
 
           <div className="p-4 sm:p-6">
+            {/* Appearance Tab */}
+            {activeTab === 'appearance' && (
+              <div className="space-y-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <Palette className="w-6 h-6 text-primary" />
+                  <h2 className="text-xl font-bold text-neutral-900">Appearance Settings</h2>
+                </div>
+
+                {/* Theme Selection */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                    <Monitor className="w-5 h-5" />
+                    Theme
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { value: 'light', label: 'Light', icon: Sun },
+                      { value: 'dark', label: 'Dark', icon: Moon },
+                      { value: 'auto', label: 'Auto', icon: Monitor }
+                    ].map((theme) => (
+                      <button
+                        key={theme.value}
+                        onClick={() => saveAppSettings({ ...appSettings, theme: theme.value as any })}
+                        className={`p-4 rounded-lg border-2 transition-all flex items-center gap-3 touch-target ${
+                          appSettings.theme === theme.value
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <theme.icon className="w-5 h-5" />
+                        <span className="font-medium">{theme.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Color Scheme */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-neutral-900">Color Scheme</h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                    {colorSchemes.map((color) => (
+                      <button
+                        key={color.value}
+                        onClick={() => saveAppSettings({ ...appSettings, colorScheme: color.value })}
+                        className={`p-3 rounded-lg border-2 transition-all flex flex-col items-center gap-2 touch-target ${
+                          appSettings.colorScheme === color.value
+                            ? 'border-primary bg-primary/5'
+                            : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div 
+                          className="w-8 h-8 rounded-full"
+                          style={{ backgroundColor: color.value }}
+                        />
+                        <span className="text-sm font-medium">{color.name}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Font Size */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                    <Type className="w-5 h-5" />
+                    Font Size
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { value: 'small', label: 'Small', size: 'text-sm' },
+                      { value: 'medium', label: 'Medium', size: 'text-base' },
+                      { value: 'large', label: 'Large', size: 'text-lg' }
+                    ].map((size) => (
+                      <button
+                        key={size.value}
+                        onClick={() => saveAppSettings({ ...appSettings, fontSize: size.value as any })}
+                        className={`p-4 rounded-lg border-2 transition-all touch-target ${
+                          appSettings.fontSize === size.value
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <span className={`font-medium ${size.size}`}>{size.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Dashboard Layout */}
+                <div className="space-y-4">
+                  <h3 className="text-lg font-semibold text-neutral-900 flex items-center gap-2">
+                    <Layout className="w-5 h-5" />
+                    Dashboard Layout
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    {[
+                      { value: 'compact', label: 'Compact', desc: 'Dense layout with minimal spacing' },
+                      { value: 'comfortable', label: 'Comfortable', desc: 'Balanced spacing for easy reading' },
+                      { value: 'spacious', label: 'Spacious', desc: 'Generous spacing for clarity' }
+                    ].map((layout) => (
+                      <button
+                        key={layout.value}
+                        onClick={() => saveAppSettings({ ...appSettings, dashboardLayout: layout.value as any })}
+                        className={`p-4 rounded-lg border-2 transition-all text-left touch-target ${
+                          appSettings.dashboardLayout === layout.value
+                            ? 'border-primary bg-primary/5 text-primary'
+                            : 'border-neutral-200 hover:border-neutral-300'
+                        }`}
+                      >
+                        <div className="font-medium mb-1">{layout.label}</div>
+                        <div className="text-sm text-neutral-600">{layout.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preview Section */}
+                <div className="bg-neutral-50 rounded-lg p-6">
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-4">Preview</h3>
+                  <div className="bg-white rounded-lg p-4 border border-neutral-200">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div 
+                        className="w-10 h-10 rounded-lg flex items-center justify-center"
+                        style={{ backgroundColor: appSettings.colorScheme }}
+                      >
+                        <SettingsIcon className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <h4 className="font-semibold text-neutral-900">Sample Dashboard Card</h4>
+                        <p className="text-sm text-neutral-600">This is how your interface will look</p>
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="bg-neutral-50 rounded-lg p-3">
+                        <div className="text-sm text-neutral-600">Total Sales</div>
+                        <div className="text-xl font-bold text-neutral-900">KES 125,000</div>
+                      </div>
+                      <div className="bg-neutral-50 rounded-lg p-3">
+                        <div className="text-sm text-neutral-600">Orders</div>
+                        <div className="text-xl font-bold text-neutral-900">48</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Business Information Tab */}
             {activeTab === 'business' && (
               <div className="space-y-6">
@@ -322,7 +579,7 @@ const Settings = () => {
                       type="text"
                       value={businessSettings.name}
                       onChange={(e) => setBusinessSettings({...businessSettings, name: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                     />
                   </div>
 
@@ -334,7 +591,7 @@ const Settings = () => {
                       type="text"
                       value={businessSettings.tax_id}
                       onChange={(e) => setBusinessSettings({...businessSettings, tax_id: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                     />
                   </div>
 
@@ -347,7 +604,7 @@ const Settings = () => {
                       value={businessSettings.address}
                       onChange={(e) => setBusinessSettings({...businessSettings, address: e.target.value})}
                       rows={3}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                     />
                   </div>
 
@@ -360,7 +617,7 @@ const Settings = () => {
                       type="tel"
                       value={businessSettings.phone}
                       onChange={(e) => setBusinessSettings({...businessSettings, phone: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                     />
                   </div>
 
@@ -373,7 +630,7 @@ const Settings = () => {
                       type="email"
                       value={businessSettings.email}
                       onChange={(e) => setBusinessSettings({...businessSettings, email: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                     />
                   </div>
                 </div>
@@ -382,11 +639,49 @@ const Settings = () => {
                   <button
                     onClick={handleBusinessSave}
                     disabled={loading}
-                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 touch-target"
                   >
                     <Save className="w-4 h-4" />
                     {loading ? 'Saving...' : 'Save Changes'}
                   </button>
+                </div>
+              </div>
+            )}
+
+            {/* Notifications Tab */}
+            {activeTab === 'notifications' && (
+              <div className="space-y-6">
+                <div className="flex items-center gap-3 mb-6">
+                  <Bell className="w-6 h-6 text-primary" />
+                  <h2 className="text-xl font-bold text-neutral-900">Notification Preferences</h2>
+                </div>
+
+                <div className="space-y-4">
+                  {Object.entries(appSettings.notifications).map(([key, value]) => (
+                    <div key={key} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg">
+                      <div>
+                        <h3 className="font-medium text-neutral-900 capitalize">{key} Notifications</h3>
+                        <p className="text-sm text-neutral-600">
+                          Receive notifications for {key.toLowerCase()} related activities
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={value}
+                          onChange={(e) => saveAppSettings({
+                            ...appSettings,
+                            notifications: {
+                              ...appSettings.notifications,
+                              [key]: e.target.checked
+                            }
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -401,7 +696,7 @@ const Settings = () => {
                   </div>
                   <button
                     onClick={() => setShowTaxForm(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors touch-target"
                   >
                     <Plus className="w-4 h-4" />
                     Add Tax Rate
@@ -432,13 +727,13 @@ const Settings = () => {
                             });
                             setShowTaxForm(true);
                           }}
-                          className="p-2 hover:bg-neutral-200 rounded-lg transition-colors"
+                          className="p-2 hover:bg-neutral-200 rounded-lg transition-colors touch-target"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => deleteTaxRate(tax.id)}
-                          className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-500"
+                          className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-500 touch-target"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -472,7 +767,7 @@ const Settings = () => {
                               setEditingTax(null);
                               setTaxForm({ name: '', rate: '', is_default: false });
                             }}
-                            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
                           >
                             <X className="w-5 h-5" />
                           </button>
@@ -487,7 +782,7 @@ const Settings = () => {
                               type="text"
                               value={taxForm.name}
                               onChange={(e) => setTaxForm({...taxForm, name: e.target.value})}
-                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                               placeholder="e.g., VAT, Sales Tax"
                               required
                             />
@@ -501,7 +796,7 @@ const Settings = () => {
                               type="number"
                               value={taxForm.rate}
                               onChange={(e) => setTaxForm({...taxForm, rate: e.target.value})}
-                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                               placeholder="16"
                               min="0"
                               max="100"
@@ -531,14 +826,14 @@ const Settings = () => {
                                 setEditingTax(null);
                                 setTaxForm({ name: '', rate: '', is_default: false });
                               }}
-                              className="flex-1 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors"
+                              className="flex-1 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors touch-target"
                             >
                               Cancel
                             </button>
                             <button
                               type="submit"
                               disabled={loading}
-                              className="flex-1 px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+                              className="flex-1 px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 touch-target"
                             >
                               {loading ? 'Saving...' : editingTax ? 'Update' : 'Create'}
                             </button>
@@ -561,7 +856,7 @@ const Settings = () => {
                   </div>
                   <button
                     onClick={() => setShowDiscountForm(true)}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors touch-target"
                   >
                     <Plus className="w-4 h-4" />
                     Add Discount
@@ -597,13 +892,13 @@ const Settings = () => {
                             });
                             setShowDiscountForm(true);
                           }}
-                          className="p-2 hover:bg-neutral-200 rounded-lg transition-colors"
+                          className="p-2 hover:bg-neutral-200 rounded-lg transition-colors touch-target"
                         >
                           <Edit2 className="w-4 h-4" />
                         </button>
                         <button
                           onClick={() => deleteDiscount(discount.id)}
-                          className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-500"
+                          className="p-2 hover:bg-red-100 rounded-lg transition-colors text-red-500 touch-target"
                         >
                           <Trash2 className="w-4 h-4" />
                         </button>
@@ -637,7 +932,7 @@ const Settings = () => {
                               setEditingDiscount(null);
                               setDiscountForm({ name: '', type: 'percentage', value: '', is_active: true });
                             }}
-                            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                            className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
                           >
                             <X className="w-5 h-5" />
                           </button>
@@ -652,7 +947,7 @@ const Settings = () => {
                               type="text"
                               value={discountForm.name}
                               onChange={(e) => setDiscountForm({...discountForm, name: e.target.value})}
-                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                               placeholder="e.g., Student Discount, Bulk Order"
                               required
                             />
@@ -665,7 +960,7 @@ const Settings = () => {
                             <select
                               value={discountForm.type}
                               onChange={(e) => setDiscountForm({...discountForm, type: e.target.value as 'percentage' | 'fixed'})}
-                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                             >
                               <option value="percentage">Percentage</option>
                               <option value="fixed">Fixed Amount</option>
@@ -680,7 +975,7 @@ const Settings = () => {
                               type="number"
                               value={discountForm.value}
                               onChange={(e) => setDiscountForm({...discountForm, value: e.target.value})}
-                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
                               placeholder={discountForm.type === 'percentage' ? '10' : '100'}
                               min="0"
                               max={discountForm.type === 'percentage' ? '100' : undefined}
@@ -710,14 +1005,14 @@ const Settings = () => {
                                 setEditingDiscount(null);
                                 setDiscountForm({ name: '', type: 'percentage', value: '', is_active: true });
                               }}
-                              className="flex-1 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors"
+                              className="flex-1 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors touch-target"
                             >
                               Cancel
                             </button>
                             <button
                               type="submit"
                               disabled={loading}
-                              className="flex-1 px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50"
+                              className="flex-1 px-4 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 touch-target"
                             >
                               {loading ? 'Saving...' : editingDiscount ? 'Update' : 'Create'}
                             </button>

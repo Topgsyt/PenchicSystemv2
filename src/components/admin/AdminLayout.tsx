@@ -21,14 +21,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children, title, subtitle }) 
         onMobileToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
       />
       
-      <div className="flex-1 flex flex-col min-w-0 lg:ml-0">
+      <div className="flex-1 flex flex-col min-w-0">
         <Header
           onMobileMenuToggle={() => setMobileMenuOpen(!mobileMenuOpen)}
           title={title}
           subtitle={subtitle}
         />
         
-        <main className="flex-1 p-3 sm:p-4 lg:p-6">
+        <main className="flex-1 p-3 sm:p-4 lg:p-6 overflow-auto">
           {children}
         </main>
       </div>
