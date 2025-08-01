@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../../lib/supabase';
 import { Product } from '../../types';
+import AdminLayout from '../../components/admin/AdminLayout';
 import { Package2, TrendingUp, TrendingDown, AlertCircle, Search, Filter, Plus, Minus } from 'lucide-react';
 import { useStore } from '../../store';
 
@@ -129,24 +130,31 @@ const StockManagement = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-      </div>
+      <AdminLayout title="Stock Management" subtitle="Manage and monitor your inventory levels">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-6 md:py-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="mb-6 md:mb-8">
-            <h1 className="text-2xl md:text-3xl font-bold mb-2 text-neutral-900">Stock Management</h1>
-            <p className="text-neutral-600">Manage and monitor your inventory levels</p>
+    <AdminLayout title="Stock Management" subtitle="Manage and monitor your inventory levels">
+      <div className="space-y-6">
+        {/* Messages */}
+        {successMessage && (
+          <div className="p-4 bg-green-50 text-green-800 rounded-lg border border-green-200">
+            {successMessage}
           </div>
-        </div>
+        )}
+        {errorMessage && (
+          <div className="p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
+            {errorMessage}
+          </div>
+        )}
 
-          {/* Quick Stats */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+        {/* Quick Stats */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
             <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-neutral-200">
               <div className="flex items-center justify-between">
                 <div>
@@ -186,22 +194,11 @@ const StockManagement = () => {
                 <TrendingUp className="w-8 h-8 text-green-500" />
               </div>
             </div>
-          </div>
+        </div>
 
-          {/* Messages */}
-          {successMessage && (
-            <div className="mb-4 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200">
-              {successMessage}
-            </div>
-          )}
-          {errorMessage && (
-            <div className="mb-4 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
-              {errorMessage}
-            </div>
-          )}
 
-          {/* Filters */}
-          <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-neutral-200 mb-6 md:mb-8">
+        {/* Filters */}
+        <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-neutral-200">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="relative">
                 <Search className="absolute left-3 top-3 w-5 h-5 text-neutral-400" />
@@ -241,10 +238,10 @@ const StockManagement = () => {
                 <option value="high">Well Stocked</option>
               </select>
             </div>
-          </div>
+        </div>
 
-          {/* Products Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
+        {/* Products Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-6">
             {filteredProducts.map((product) => {
               const stockStatus = getStockStatus(product.stock);
               return (
@@ -305,17 +302,17 @@ const StockManagement = () => {
                 </div>
               );
             })}
-          </div>
-
-          {filteredProducts.length === 0 && (
-            <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-neutral-200">
-              <Package2 className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
-              <h3 className="text-lg font-semibold mb-2 text-neutral-900">No Products Found</h3>
-              <p className="text-neutral-600">No products match your current filters</p>
-            </div>
-          )}
         </div>
-    </div>
+
+        {filteredProducts.length === 0 && (
+          <div className="text-center py-12 bg-white rounded-xl shadow-sm border border-neutral-200">
+            <Package2 className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
+            <h3 className="text-lg font-semibold mb-2 text-neutral-900">No Products Found</h3>
+            <p className="text-neutral-600">No products match your current filters</p>
+          </div>
+        )}
+      </div>
+    </AdminLayout>
   );
 };
 

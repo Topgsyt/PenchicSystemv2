@@ -168,32 +168,28 @@ const AnalyticsDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-50 py-6 md:py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-8 text-neutral-900">Analytics Dashboard</h1>
-          <div className="text-neutral-600 text-center">Loading data...</div>
+      <AdminLayout title="Analytics Dashboard" subtitle="Business insights and performance metrics">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-neutral-50 py-6 md:py-8">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h1 className="text-2xl md:text-3xl font-bold mb-8 text-neutral-900">Analytics Dashboard</h1>
-          <div className="text-red-600 text-center bg-red-50 p-4 rounded-lg border border-red-200">{error}</div>
+      <AdminLayout title="Analytics Dashboard" subtitle="Business insights and performance metrics">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="text-red-600 text-center">{error}</div>
         </div>
-      </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-6 md:py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 md:mb-8 gap-4">
-          <h1 className="text-2xl md:text-3xl font-bold text-neutral-900">Analytics Dashboard</h1>
-        
+    <AdminLayout title="Analytics Dashboard" subtitle="Business insights and performance metrics">
+      <div className="space-y-6">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
           <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 w-full lg:w-auto">
             <div className="flex items-center gap-2">
               <Calendar className="w-5 h-5 text-neutral-500" />
@@ -227,7 +223,7 @@ const AnalyticsDashboard: React.FC = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* Revenue Card */}
           <div className="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-neutral-200 hover:shadow-md transition-all">
             <div className="flex items-center justify-between mb-3 md:mb-4">
@@ -425,7 +421,7 @@ const AnalyticsDashboard: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

@@ -10,17 +10,6 @@
   --layout-spacing: 1rem;
 }
 
-[data-theme="dark"] {
-  --bg-color: #1a1a1a;
-  --text-color: #ffffff;
-  --border-color: #333333;
-}
-
-[data-theme="light"] {
-  --bg-color: #ffffff;
-  --text-color: #000000;
-  --border-color: #e5e5e5;
-}
 
 @keyframes fadeIn {
   from {
@@ -54,7 +43,7 @@ body {
   input[type="submit"], 
   select,
   .clickable {
-    min-height: 44px;
+    min-height: 48px;
     padding: 12px 16px;
   }
   
@@ -63,7 +52,7 @@ body {
   input[type="password"],
   input[type="number"],
   textarea {
-    min-height: 44px;
+    min-height: 48px;
     padding: 12px 16px;
     font-size: 16px; /* Prevents zoom on iOS */
   }
@@ -77,7 +66,7 @@ body {
   }
   
   .pos-product-card {
-    min-height: 120px;
+    min-height: 140px;
   }
   
   .pos-cart-panel {
@@ -85,7 +74,7 @@ body {
     max-width: none;
   }
   
-/* Responsive text sizing */
+  /* Responsive text sizing */
   .text-responsive-sm {
     font-size: 0.875rem;
   }
@@ -101,8 +90,8 @@ body {
 
 /* Enhanced touch targets for better mobile experience */
 .touch-target {
-  min-height: 44px;
-  min-width: 44px;
+  min-height: 48px;
+  min-width: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -136,6 +125,45 @@ body {
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: #a8a8a8;
+}
+
+/* Admin layout specific styles */
+.admin-layout {
+  height: 100vh;
+  overflow: hidden;
+}
+
+.admin-sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.admin-content {
+  height: 100vh;
+  overflow-y: auto;
+}
+
+/* Mobile POS optimizations */
+@media (max-width: 480px) {
+  .pos-header {
+    padding: 0.75rem;
+  }
+  
+  .pos-product-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 0.5rem;
+  }
+  
+  .pos-cart-item {
+    padding: 0.5rem;
+  }
+  
+  .pos-quantity-controls button {
+    min-width: 40px;
+    min-height: 40px;
+  }
 }
 
 @layer utilities {

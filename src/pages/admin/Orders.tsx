@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
+import AdminLayout from '../../components/admin/AdminLayout';
 import { 
   Package2, Download, Search, Calendar, Filter, 
   ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign,
@@ -201,23 +202,19 @@ const Orders = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
-      </div>
+      <AdminLayout title="Orders Management" subtitle="Manage and track all orders">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-50 py-6 md:py-12">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="bg-white rounded-xl shadow-sm border border-neutral-200 overflow-hidden">
-          <div className="p-4 md:p-6">
+    <AdminLayout title="Orders Management" subtitle="Manage and track all orders">
+      <div className="space-y-6">
             {/* Header */}
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 md:mb-8 gap-4">
-              <div>
-                <h1 className="text-2xl md:text-3xl font-bold mb-2 text-neutral-900">Orders Management</h1>
-                <p className="text-neutral-600">Manage and track all orders</p>
-              </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <button
                 onClick={downloadReport}
                 className="w-full sm:w-auto flex items-center justify-center gap-2 px-4 py-2 bg-primary hover:bg-primary-dark text-white rounded-lg transition-colors"
@@ -228,9 +225,9 @@ const Orders = () => {
             </div>
 
             {/* Stats Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 mb-6 md:mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
               {/* Total Orders */}
-              <div className="bg-neutral-50 p-4 md:p-6 rounded-xl border border-neutral-200">
+              <div className="bg-white p-4 md:p-6 rounded-xl border border-neutral-200 shadow-sm">
                 <div className="flex items-center justify-between mb-3 md:mb-4">
                   <Package2 className="w-8 h-8 text-blue-500" />
                   <span className="text-sm text-neutral-500 font-medium">Total Orders</span>
@@ -243,7 +240,7 @@ const Orders = () => {
               </div>
 
               {/* Revenue */}
-              <div className="bg-neutral-50 p-4 md:p-6 rounded-xl border border-neutral-200">
+              <div className="bg-white p-4 md:p-6 rounded-xl border border-neutral-200 shadow-sm">
                 <div className="flex items-center justify-between mb-3 md:mb-4">
                   <DollarSign className="w-8 h-8 text-green-500" />
                   <span className="text-sm text-neutral-500 font-medium">Total Revenue</span>
@@ -258,7 +255,7 @@ const Orders = () => {
               </div>
 
               {/* Average Order Value */}
-              <div className="bg-neutral-50 p-4 md:p-6 rounded-xl border border-neutral-200">
+              <div className="bg-white p-4 md:p-6 rounded-xl border border-neutral-200 shadow-sm">
                 <div className="flex items-center justify-between mb-3 md:mb-4">
                   <TrendingUp className="w-8 h-8 text-purple-500" />
                   <span className="text-sm text-neutral-500 font-medium">Average Order</span>
@@ -273,7 +270,7 @@ const Orders = () => {
               </div>
 
               {/* Order Status */}
-              <div className="bg-neutral-50 p-4 md:p-6 rounded-xl border border-neutral-200">
+              <div className="bg-white p-4 md:p-6 rounded-xl border border-neutral-200 shadow-sm">
                 <div className="flex items-center justify-between mb-3 md:mb-4">
                   <Truck className="w-8 h-8 text-orange-500" />
                   <span className="text-sm text-neutral-500 font-medium">Order Status</span>
@@ -296,7 +293,8 @@ const Orders = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col lg:flex-row gap-4 mb-6 md:mb-8">
+            <div className="bg-white p-4 rounded-xl border border-neutral-200 shadow-sm">
+              <div className="flex flex-col lg:flex-row gap-4">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-3 w-5 h-5 text-neutral-400" />
                 <input
@@ -349,12 +347,14 @@ const Orders = () => {
                   </div>
                 )}
               </div>
+              </div>
             </div>
 
             {/* Orders List */}
-            <div className="space-y-4 md:space-y-6">
+            <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
+              <div className="p-6 space-y-6">
               {filteredOrders.map((order) => (
-                <div key={order.id} className="bg-neutral-50 rounded-lg p-4 md:p-6 border border-neutral-200">
+                <div key={order.id} className="bg-neutral-50 rounded-lg p-4 md:p-6 border border-neutral-200" data-order-id={order.id}>
                   <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
                     <div>
                       <div className="flex items-center gap-2">
@@ -418,11 +418,10 @@ const Orders = () => {
                   <p className="text-neutral-600">No orders match your current filters</p>
                 </div>
               )}
+              </div>
             </div>
-          </div>
-        </div>
       </div>
-    </div>
+    </AdminLayout>
   );
 };
 

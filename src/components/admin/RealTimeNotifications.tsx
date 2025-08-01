@@ -82,7 +82,7 @@ const RealTimeNotifications: React.FC = () => {
       <motion.button
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20"
+        className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 touch-target"
         aria-label="Notifications"
       >
         <Bell className="w-5 h-5 text-neutral-600" />
@@ -137,14 +137,14 @@ const RealTimeNotifications: React.FC = () => {
                 {unreadCount > 0 && (
                   <button
                     onClick={markAllAsRead}
-                    className="text-xs text-primary hover:text-primary-dark transition-colors font-medium"
+                    className="text-xs text-primary hover:text-primary-dark transition-colors font-medium touch-target px-2 py-1"
                   >
                     Mark all read
                   </button>
                 )}
                 <button
                   onClick={clearAll}
-                  className="text-xs text-red-500 hover:text-red-600 transition-colors font-medium"
+                  className="text-xs text-red-500 hover:text-red-600 transition-colors font-medium touch-target px-2 py-1"
                 >
                   Clear all
                 </button>
@@ -170,7 +170,7 @@ const RealTimeNotifications: React.FC = () => {
                       key={notification.id}
                       initial={{ opacity: 0, x: -20 }}
                       animate={{ opacity: 1, x: 0 }}
-                      className={`p-4 hover:bg-neutral-50 cursor-pointer transition-colors border-l-4 ${getNotificationBg(notification)}`}
+                      className={`p-4 hover:bg-neutral-50 cursor-pointer transition-colors border-l-4 ${getNotificationBg(notification)} touch-target`}
                       onClick={() => markAsRead(notification.id)}
                     >
                       <div className="flex items-start gap-3">

@@ -236,21 +236,21 @@ const POSInterface = () => {
   return (
     <div className={containerClass}>
       {/* Header */}
-      <header className="bg-white border-b border-neutral-200 px-4 lg:px-6 py-3 shadow-sm flex-shrink-0">
+      <header className="bg-white border-b border-neutral-200 px-3 sm:px-4 lg:px-6 py-3 shadow-sm flex-shrink-0">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
-                <ShoppingCart className="w-6 h-6 text-white" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-primary rounded-xl flex items-center justify-center">
+                <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-xl font-bold text-neutral-900">Point of Sale</h1>
-                <p className="text-sm text-neutral-500">Session Active</p>
+                <h1 className="text-lg sm:text-xl font-bold text-neutral-900">Point of Sale</h1>
+                <p className="text-xs sm:text-sm text-neutral-500">Session Active</p>
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <div className="hidden md:flex items-center gap-2 px-3 py-2 bg-green-50 rounded-lg">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
               <span className="text-sm font-medium text-green-700">Online</span>
@@ -258,7 +258,7 @@ const POSInterface = () => {
             
             <button
               onClick={() => setIsFullscreen(!isFullscreen)}
-              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
               title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
             >
               {isFullscreen ? <Minimize2 className="w-5 h-5" /> : <Maximize2 className="w-5 h-5" />}
@@ -269,9 +269,9 @@ const POSInterface = () => {
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Products Panel */}
-        <div className="flex-1 flex flex-col p-3 lg:p-4 min-w-0 max-w-full">
+        <div className="flex-1 flex flex-col p-2 sm:p-3 lg:p-4 min-w-0 max-w-full">
           {/* Search and Filters */}
-          <div className="flex flex-col lg:flex-row gap-3 mb-4 flex-shrink-0">
+          <div className="flex flex-col sm:flex-row lg:flex-row gap-2 sm:gap-3 mb-3 sm:mb-4 flex-shrink-0">
             <div className="relative flex-1">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
               <input
@@ -279,15 +279,15 @@ const POSInterface = () => {
                 placeholder="Search products..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-12 pr-4 py-2.5 bg-white border border-neutral-200 rounded-lg text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
+                className="w-full pl-12 pr-4 py-3 sm:py-2.5 bg-white border border-neutral-200 rounded-lg text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm touch-target"
               />
             </div>
 
-            <div className="flex gap-2">
+            <div className="flex flex-col sm:flex-row gap-2">
               <select
                 value={selectedCategory}
                 onChange={(e) => setSelectedCategory(e.target.value)}
-                className="px-3 py-2.5 bg-white border border-neutral-200 rounded-lg text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm"
+                className="px-3 py-3 sm:py-2.5 bg-white border border-neutral-200 rounded-lg text-neutral-900 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors text-sm touch-target"
               >
                 {categories.map(category => (
                   <option key={category} value={category}>
@@ -329,7 +329,7 @@ const POSInterface = () => {
             ) : (
               <div className={`${
                 viewMode === 'grid' 
-                  ? `grid gap-3 ${isFullscreen ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4'}` 
+                  ? `grid gap-2 sm:gap-3 ${isFullscreen ? 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6' : 'grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5'}` 
                   : 'space-y-2'
               }`}>
                 {filteredProducts.map((product) => (
@@ -340,13 +340,13 @@ const POSInterface = () => {
                     onClick={() => addToCart(product)}
                     className={`
                       bg-white rounded-xl border border-neutral-200 cursor-pointer transition-all hover:shadow-md
-                      ${viewMode === 'grid' ? 'p-3' : 'p-3 flex items-center gap-4'}
+                      ${viewMode === 'grid' ? 'p-2 sm:p-3' : 'p-3 flex items-center gap-4'}
                       ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                   >
                     {viewMode === 'grid' ? (
                       <>
-                        <div className="aspect-square bg-neutral-100 rounded-lg mb-2 overflow-hidden">
+                        <div className="aspect-square bg-neutral-100 rounded-lg mb-2 sm:mb-3 overflow-hidden">
                           <img
                             src={product.image_url}
                             alt={product.name}
@@ -354,10 +354,10 @@ const POSInterface = () => {
                           />
                         </div>
                         <div>
-                          <h3 className="font-medium text-neutral-900 text-sm mb-1 line-clamp-2">
+                          <h3 className="font-medium text-neutral-900 text-xs sm:text-sm mb-1 line-clamp-2">
                             {product.name}
                           </h3>
-                          <p className="text-primary font-bold text-sm">
+                          <p className="text-primary font-bold text-xs sm:text-sm">
                             KES {product.price.toLocaleString()}
                           </p>
                           <p className={`text-xs mt-1 ${
@@ -400,17 +400,17 @@ const POSInterface = () => {
         </div>
 
         {/* Cart Panel */}
-        <div className={`${isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-sm lg:max-w-md'} bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0`}>
-          <div className="p-4 border-b border-neutral-200 flex-shrink-0">
+        <div className={`${isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'} bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0`}>
+          <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-neutral-900">Current Order</h2>
+              <h2 className="text-base sm:text-lg font-bold text-neutral-900">Current Order</h2>
               <div className="flex items-center gap-2 text-sm text-neutral-500">
                 <Clock className="w-4 h-4" />
-                <span>{new Date().toLocaleTimeString()}</span>
+                <span className="hidden sm:inline">{new Date().toLocaleTimeString()}</span>
               </div>
             </div>
             
-            <div className="bg-neutral-50 rounded-lg p-4">
+            <div className="bg-neutral-50 rounded-lg p-3 sm:p-4">
               <div className="flex justify-between text-sm">
                 <span className="text-neutral-600">Items:</span>
                 <span className="font-medium">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
@@ -418,13 +418,13 @@ const POSInterface = () => {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 min-h-0 max-h-full">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0 max-h-full">
             {cart.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
                   <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-neutral-300" />
                   <p className="text-neutral-500">Cart is empty</p>
-                  <p className="text-sm text-neutral-400 mt-1">Add products to get started</p>
+                  <p className="text-xs sm:text-sm text-neutral-400 mt-1">Add products to get started</p>
                 </div>
               </div>
             ) : (
@@ -434,16 +434,16 @@ const POSInterface = () => {
                     key={item.id}
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="bg-neutral-50 rounded-lg p-3"
+                    className="bg-neutral-50 rounded-lg p-2 sm:p-3"
                   >
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-neutral-900 text-sm">{item.name}</h3>
-                        <p className="text-primary font-bold text-sm">KES {item.price.toLocaleString()}</p>
+                        <h3 className="font-medium text-neutral-900 text-xs sm:text-sm">{item.name}</h3>
+                        <p className="text-primary font-bold text-xs sm:text-sm">KES {item.price.toLocaleString()}</p>
                       </div>
                       <button
                         onClick={() => removeFromCart(item.id)}
-                        className="p-1.5 hover:bg-red-100 rounded text-red-500 transition-colors"
+                        className="p-1.5 hover:bg-red-100 rounded text-red-500 transition-colors touch-target"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
@@ -453,21 +453,21 @@ const POSInterface = () => {
                       <div className="flex items-center bg-white rounded-lg border border-neutral-200">
                         <button
                           onClick={() => updateQuantity(item.id, -1)}
-                          className="p-1.5 hover:bg-neutral-100 rounded-l-lg transition-colors"
+                          className="p-2 hover:bg-neutral-100 rounded-l-lg transition-colors touch-target"
                           disabled={item.quantity <= 1}
                         >
                           <Minus className="w-4 h-4" />
                         </button>
-                        <span className="px-3 py-1.5 font-medium text-sm">{item.quantity}</span>
+                        <span className="px-2 sm:px-3 py-2 font-medium text-sm min-w-[40px] text-center">{item.quantity}</span>
                         <button
                           onClick={() => updateQuantity(item.id, 1)}
-                          className="p-1.5 hover:bg-neutral-100 rounded-r-lg transition-colors"
+                          className="p-2 hover:bg-neutral-100 rounded-r-lg transition-colors touch-target"
                           disabled={item.quantity >= item.stock}
                         >
                           <Plus className="w-4 h-4" />
                         </button>
                       </div>
-                      <p className="font-bold text-neutral-900 text-sm">
+                      <p className="font-bold text-neutral-900 text-xs sm:text-sm">
                         KES {(item.price * item.quantity).toLocaleString()}
                       </p>
                     </div>
@@ -478,7 +478,7 @@ const POSInterface = () => {
           </div>
 
           {cart.length > 0 && (
-            <div className="p-4 border-t border-neutral-200 bg-neutral-50 flex-shrink-0">
+            <div className="p-3 sm:p-4 border-t border-neutral-200 bg-neutral-50 flex-shrink-0">
               <div className="space-y-2 mb-4">
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">Subtotal:</span>
@@ -488,7 +488,7 @@ const POSInterface = () => {
                   <span className="text-neutral-600">Tax (16%):</span>
                   <span className="font-medium">KES {calculateTotals().tax.toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between font-bold border-t border-neutral-200 pt-2">
+                <div className="flex justify-between font-bold border-t border-neutral-200 pt-2 text-sm sm:text-base">
                   <span>Total:</span>
                   <span>KES {calculateTotals().total.toLocaleString()}</span>
                 </div>
@@ -497,13 +497,13 @@ const POSInterface = () => {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setCart([])}
-                  className="px-3 py-2.5 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors font-medium text-sm"
+                  className="px-3 py-3 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors font-medium text-sm touch-target"
                 >
                   Clear
                 </button>
                 <button
                   onClick={() => setShowPayment(true)}
-                  className="px-3 py-2.5 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm"
+                  className="px-3 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm touch-target"
                 >
                   Pay Now
                 </button>
