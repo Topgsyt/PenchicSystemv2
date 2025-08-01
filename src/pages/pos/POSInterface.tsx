@@ -41,6 +41,9 @@ const POSInterface = () => {
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTransaction, setLastTransaction] = useState(null);
 
+  // <-- NEW: state for cart collapse toggle
+  const [cartCollapsed, setCartCollapsed] = useState(false);
+
   useEffect(() => {
     if (!user || !['admin', 'worker'].includes(user.role)) {
       navigate('/');
@@ -353,42 +356,23 @@ const POSInterface = () => {
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <div>
-                          <h3 className="font-medium text-neutral-900 text-xs sm:text-sm mb-1 line-clamp-2">
-                            {product.name}
-                          </h3>
-                          <p className="text-primary font-bold text-xs sm:text-sm">
-                            KES {product.price.toLocaleString()}
-                          </p>
-                          <p className={`text-xs mt-1 ${
-                            product.stock > 10 ? 'text-green-600' : 
-                            product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
-                            {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                          </p>
+                        <div className="flex flex-col items-start">
+                          <h3 className="font-semibold text-neutral-900 text-sm sm:text-base truncate w-full">{product.name}</h3>
+                          <p className="text-primary font-bold text-xs sm:text-sm">KES {product.price.toLocaleString()}</p>
+                          <p className="text-neutral-500 text-xs sm:text-sm mt-1">{product.category}</p>
+                          {product.stock <= 0 && <p className="text-red-500 text-xs mt-1">Out of stock</p>}
                         </div>
                       </>
                     ) : (
                       <>
-                        <div className="w-16 h-16 bg-neutral-100 rounded-lg overflow-hidden flex-shrink-0">
-                          <img
-                            src={product.image_url}
-                            alt={product.name}
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="font-medium text-neutral-900 truncate">{product.name}</h3>
-                          <p className="text-sm text-neutral-500">{product.category}</p>
-                          <div className="flex items-center justify-between mt-1">
-                            <p className="text-primary font-bold">KES {product.price.toFixed(2)}</p>
-                            <p className={`text-xs ${
-                              product.stock > 10 ? 'text-green-600' : 
-                              product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
-                            }`}>
-                              {product.stock} left
-                            </p>
-                          </div>
+                          <h3 className="font-semibold text-neutral-900 text-sm sm:text-base truncate">{product.name}</h3>
+                          <p className="text-neutral-500 text-xs sm:text-sm">{product.category}</p>
+                          {product.stock <= 0 && <p className="text-red-500 text-xs mt-1">Out of stock</p>}
+                        </div>
+                        <div className="text-right min-w-[90px]">
+                          <p className="text-primary font-bold text-sm sm:text-base">KES {product.price.toLocaleString()}</p>
+                          <p className="text-neutral-400 text-xs sm:text-sm mt-1">Stock: {product.stock}</p>
                         </div>
                       </>
                     )}
@@ -400,115 +384,142 @@ const POSInterface = () => {
         </div>
 
         {/* Cart Panel */}
-        <div className={`${isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'} bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0`}>
-          <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base sm:text-lg font-bold text-neutral-900">Current Order</h2>
-              <div className="flex items-center gap-2 text-sm text-neutral-500">
-                <Clock className="w-4 h-4" />
-                <span className="hidden sm:inline">{new Date().toLocaleTimeString()}</span>
-              </div>
-            </div>
-            
-            <div className="bg-neutral-50 rounded-lg p-3 sm:p-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-neutral-600">Items:</span>
-                <span className="font-medium">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
-              </div>
-            </div>
+        <div
+          className={`${
+            isFullscreen
+              ? cartCollapsed ? 'w-16 lg:w-20' : 'w-80 lg:w-96'
+              : cartCollapsed ? 'w-16' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'
+          } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-width duration-300 ease-in-out`}
+        >
+          <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0 flex items-center justify-between">
+            <h2 className={`text-base sm:text-lg font-bold text-neutral-900 ${cartCollapsed ? 'truncate' : ''}`}>
+              Current Order
+            </h2>
+            <button
+              onClick={() => setCartCollapsed(!cartCollapsed)}
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
+              title={cartCollapsed ? 'Expand Cart' : 'Collapse Cart'}
+              aria-label={cartCollapsed ? 'Expand Cart' : 'Collapse Cart'}
+            >
+              {cartCollapsed ? (
+                <Plus className="w-5 h-5" />
+              ) : (
+                <Minus className="w-5 h-5" />
+              )}
+            </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0 max-h-full">
-            {cart.length === 0 ? (
-              <div className="flex items-center justify-center h-full">
-                <div className="text-center">
-                  <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-neutral-300" />
-                  <p className="text-neutral-500">Cart is empty</p>
-                  <p className="text-xs sm:text-sm text-neutral-400 mt-1">Add products to get started</p>
+          {/* Only show cart content if not collapsed */}
+          {!cartCollapsed && (
+            <>
+              <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2 text-sm text-neutral-500">
+                    <Clock className="w-4 h-4" />
+                    <span className="hidden sm:inline">{new Date().toLocaleTimeString()}</span>
+                  </div>
+                  <div className="bg-neutral-50 rounded-lg p-3 sm:p-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">Items:</span>
+                      <span className="font-medium">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                    </div>
+                  </div>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-2">
-                {cart.map((item) => (
-                  <motion.div
-                    key={item.id}
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="bg-neutral-50 rounded-lg p-2 sm:p-3"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex-1 min-w-0">
-                        <h3 className="font-medium text-neutral-900 text-xs sm:text-sm">{item.name}</h3>
-                        <p className="text-primary font-bold text-xs sm:text-sm">KES {item.price.toLocaleString()}</p>
-                      </div>
-                      <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="p-1.5 hover:bg-red-100 rounded text-red-500 transition-colors touch-target"
+
+              <div className="flex-1 overflow-y-auto p-3 sm:p-4 min-h-0 max-h-full">
+                {cart.length === 0 ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center">
+                      <ShoppingCart className="w-12 h-12 mx-auto mb-4 text-neutral-300" />
+                      <p className="text-neutral-500">Cart is empty</p>
+                      <p className="text-xs sm:text-sm text-neutral-400 mt-1">Add products to get started</p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {cart.map((item) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="bg-neutral-50 rounded-lg p-2 sm:p-3"
                       >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                    
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center bg-white rounded-lg border border-neutral-200">
-                        <button
-                          onClick={() => updateQuantity(item.id, -1)}
-                          className="p-2 hover:bg-neutral-100 rounded-l-lg transition-colors touch-target"
-                          disabled={item.quantity <= 1}
-                        >
-                          <Minus className="w-4 h-4" />
-                        </button>
-                        <span className="px-2 sm:px-3 py-2 font-medium text-sm min-w-[40px] text-center">{item.quantity}</span>
-                        <button
-                          onClick={() => updateQuantity(item.id, 1)}
-                          className="p-2 hover:bg-neutral-100 rounded-r-lg transition-colors touch-target"
-                          disabled={item.quantity >= item.stock}
-                        >
-                          <Plus className="w-4 h-4" />
-                        </button>
-                      </div>
-                      <p className="font-bold text-neutral-900 text-xs sm:text-sm">
-                        KES {(item.price * item.quantity).toLocaleString()}
-                      </p>
-                    </div>
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-medium text-neutral-900 text-xs sm:text-sm">{item.name}</h3>
+                            <p className="text-primary font-bold text-xs sm:text-sm">KES {item.price.toLocaleString()}</p>
+                          </div>
+                          <button
+                            onClick={() => removeFromCart(item.id)}
+                            className="p-1.5 hover:bg-red-100 rounded text-red-500 transition-colors touch-target"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
 
-          {cart.length > 0 && (
-            <div className="p-3 sm:p-4 border-t border-neutral-200 bg-neutral-50 flex-shrink-0">
-              <div className="space-y-2 mb-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">Subtotal:</span>
-                  <span className="font-medium">KES {calculateTotals().subtotal.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">Tax (16%):</span>
-                  <span className="font-medium">KES {calculateTotals().tax.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between font-bold border-t border-neutral-200 pt-2 text-sm sm:text-base">
-                  <span>Total:</span>
-                  <span>KES {calculateTotals().total.toLocaleString()}</span>
-                </div>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center bg-white rounded-lg border border-neutral-200">
+                            <button
+                              onClick={() => updateQuantity(item.id, -1)}
+                              className="p-2 hover:bg-neutral-100 rounded-l-lg transition-colors touch-target"
+                              disabled={item.quantity <= 1}
+                            >
+                              <Minus className="w-4 h-4" />
+                            </button>
+                            <span className="px-2 sm:px-3 py-2 font-medium text-sm min-w-[40px] text-center">{item.quantity}</span>
+                            <button
+                              onClick={() => updateQuantity(item.id, 1)}
+                              className="p-2 hover:bg-neutral-100 rounded-r-lg transition-colors touch-target"
+                              disabled={item.quantity >= item.stock}
+                            >
+                              <Plus className="w-4 h-4" />
+                            </button>
+                          </div>
+                          <p className="font-bold text-neutral-900 text-xs sm:text-sm">
+                            KES {(item.price * item.quantity).toLocaleString()}
+                          </p>
+                        </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={() => setCart([])}
-                  className="px-3 py-3 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors font-medium text-sm touch-target"
-                >
-                  Clear
-                </button>
-                <button
-                  onClick={() => setShowPayment(true)}
-                  className="px-3 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm touch-target"
-                >
-                  Pay Now
-                </button>
-              </div>
-            </div>
+              {cart.length > 0 && (
+                <div className="p-3 sm:p-4 border-t border-neutral-200 bg-neutral-50 flex-shrink-0">
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">Subtotal:</span>
+                      <span className="font-medium">KES {calculateTotals().subtotal.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-neutral-600">Tax (16%):</span>
+                      <span className="font-medium">KES {calculateTotals().tax.toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between font-bold border-t border-neutral-200 pt-2 text-sm sm:text-base">
+                      <span>Total:</span>
+                      <span>KES {calculateTotals().total.toLocaleString()}</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setCart([])}
+                      className="px-3 py-3 bg-neutral-200 text-neutral-700 rounded-lg hover:bg-neutral-300 transition-colors font-medium text-sm touch-target"
+                    >
+                      Clear
+                    </button>
+                    <button
+                      onClick={() => setShowPayment(true)}
+                      className="px-3 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium text-sm touch-target"
+                    >
+                      Pay Now
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -520,116 +531,71 @@ const POSInterface = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowPayment(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              className="bg-white rounded-lg max-w-md w-full p-6 relative"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-bold text-neutral-900">Payment</h2>
+              <h2 className="text-lg font-semibold mb-4">Complete Payment</h2>
+
+              <div className="mb-4">
+                <label className="block mb-1 font-medium">Select Payment Method</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  className="w-full border border-neutral-300 rounded-lg p-2"
+                >
+                  <option value="">Select</option>
+                  <option value="cash">Cash</option>
+                  <option value="mpesa">M-Pesa</option>
+                  <option value="card">Card</option>
+                </select>
+              </div>
+
+              {paymentMethod === 'cash' && (
+                <div className="mb-4">
+                  <label className="block mb-1 font-medium">Cash Amount</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={cashAmount}
+                    onChange={(e) => setCashAmount(e.target.value)}
+                    className="w-full border border-neutral-300 rounded-lg p-2"
+                  />
+                </div>
+              )}
+
+              {paymentMethod === 'mpesa' && (
+                <div className="mb-4">
+                  <label className="block mb-1 font-medium">M-Pesa Reference</label>
+                  <input
+                    type="text"
+                    value={mpesaReference}
+                    onChange={(e) => setMpesaReference(e.target.value)}
+                    className="w-full border border-neutral-300 rounded-lg p-2"
+                  />
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setShowPayment(false)}
-                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                  className="px-4 py-2 rounded bg-neutral-200 hover:bg-neutral-300"
                 >
-                  <X className="w-5 h-5" />
+                  Cancel
+                </button>
+                <button
+                  onClick={handlePayment}
+                  className="px-4 py-2 rounded bg-primary text-white hover:bg-primary-dark"
+                >
+                  Pay
                 </button>
               </div>
-
-              <div className="mb-6">
-                <div className="bg-neutral-50 rounded-lg p-4 mb-4">
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total Amount:</span>
-                    <span>KES {calculateTotals().total.toLocaleString()}</span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <button
-                    onClick={() => setPaymentMethod('cash')}
-                    className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors ${
-                      paymentMethod === 'cash'
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-neutral-200 hover:border-neutral-300'
-                    }`}
-                  >
-                    <Banknote className="w-5 h-5" />
-                    <span className="font-medium">Cash</span>
-                  </button>
-                  <button
-                    onClick={() => setPaymentMethod('mpesa')}
-                    className={`flex items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors ${
-                      paymentMethod === 'mpesa'
-                        ? 'border-primary bg-primary/5 text-primary'
-                        : 'border-neutral-200 hover:border-neutral-300'
-                    }`}
-                  >
-                    <CreditCard className="w-5 h-5" />
-                    <span className="font-medium">M-Pesa</span>
-                  </button>
-                </div>
-
-                {paymentMethod === 'cash' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-3"
-                  >
-                    <label className="block text-sm font-medium text-neutral-700">
-                      Cash Received
-                    </label>
-                    <input
-                      type="number"
-                      value={cashAmount}
-                      onChange={(e) => setCashAmount(e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                      placeholder="Enter amount received"
-                      min={calculateTotals().total.toString()}
-                      step="0.01"
-                    />
-                    {cashAmount && Number(cashAmount) >= calculateTotals().total && (
-                      <div className="bg-green-50 rounded-lg p-3">
-                        <p className="text-sm text-green-700">
-                          Change: KES {(Number(cashAmount) - calculateTotals().total).toLocaleString()}
-                        </p>
-                      </div>
-                    )}
-                  </motion.div>
-                )}
-
-                {paymentMethod === 'mpesa' && (
-                  <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="space-y-3"
-                  >
-                    <label className="block text-sm font-medium text-neutral-700">
-                      M-Pesa Reference
-                    </label>
-                    <input
-                      type="text"
-                      value={mpesaReference}
-                      onChange={(e) => setMpesaReference(e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                      placeholder="Enter M-Pesa transaction code"
-                    />
-                  </motion.div>
-                )}
-              </div>
-
-              <button
-                onClick={handlePayment}
-                disabled={
-                  !paymentMethod ||
-                  (paymentMethod === 'cash' && (!cashAmount || Number(cashAmount) < calculateTotals().total)) ||
-                  (paymentMethod === 'mpesa' && !mpesaReference)
-                }
-                className="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                Complete Payment
-              </button>
             </motion.div>
           </motion.div>
         )}
@@ -642,77 +608,72 @@ const POSInterface = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+            onClick={() => setShowReceipt(false)}
           >
             <motion.div
-              initial={{ scale: 0.9, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
+              initial={{ scale: 0.8 }}
+              animate={{ scale: 1 }}
+              exit={{ scale: 0.8 }}
+              className="bg-white rounded-lg max-w-md w-full p-6 relative overflow-y-auto max-h-[80vh]"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
-                </div>
-                <h2 className="text-xl font-bold text-neutral-900 mb-2">Payment Successful!</h2>
-                <p className="text-neutral-600">Transaction completed successfully</p>
+              <h2 className="text-lg font-semibold mb-4">Receipt</h2>
+              <div className="mb-4">
+                <p><strong>Order ID:</strong> {lastTransaction.orderId}</p>
+                <p><strong>Date:</strong> {lastTransaction.timestamp.toLocaleString()}</p>
+                <p><strong>Payment Method:</strong> {lastTransaction.paymentMethod}</p>
+                {lastTransaction.paymentMethod === 'cash' && (
+                  <p><strong>Cash Amount:</strong> KES {lastTransaction.cashAmount}</p>
+                )}
+                {lastTransaction.paymentMethod === 'mpesa' && (
+                  <p><strong>M-Pesa Reference:</strong> {lastTransaction.mpesaReference}</p>
+                )}
               </div>
-
-              <div className="bg-neutral-50 rounded-lg p-4 mb-6">
-                <div className="text-center mb-4">
-                  <h3 className="font-bold text-lg">Penchic Farm</h3>
-                  <p className="text-sm text-neutral-600">Receipt #{lastTransaction.orderId.slice(0, 8)}</p>
-                  <p className="text-xs text-neutral-500">{lastTransaction.timestamp.toLocaleString()}</p>
+              <div className="mb-4">
+                <table className="w-full text-sm border-collapse border border-neutral-300">
+                  <thead>
+                    <tr className="bg-neutral-100">
+                      <th className="border border-neutral-300 p-2 text-left">Product</th>
+                      <th className="border border-neutral-300 p-2 text-right">Qty</th>
+                      <th className="border border-neutral-300 p-2 text-right">Price</th>
+                      <th className="border border-neutral-300 p-2 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {lastTransaction.items.map((item) => (
+                      <tr key={item.id}>
+                        <td className="border border-neutral-300 p-2">{item.name}</td>
+                        <td className="border border-neutral-300 p-2 text-right">{item.quantity}</td>
+                        <td className="border border-neutral-300 p-2 text-right">KES {item.price.toLocaleString()}</td>
+                        <td className="border border-neutral-300 p-2 text-right">
+                          KES {(item.price * item.quantity).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="space-y-2 mb-4">
+                <div className="flex justify-between text-sm">
+                  <span>Subtotal:</span>
+                  <span>KES {lastTransaction.totals.subtotal.toLocaleString()}</span>
                 </div>
-
-                <div className="space-y-2 mb-4">
-                  {lastTransaction.items.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span>{item.name} x{item.quantity}</span>
-                      <span>KES {(item.price * item.quantity).toLocaleString()}</span>
-                    </div>
-                  ))}
+                <div className="flex justify-between text-sm">
+                  <span>Tax (16%):</span>
+                  <span>KES {lastTransaction.totals.tax.toLocaleString()}</span>
                 </div>
-
-                <div className="border-t border-neutral-200 pt-3 space-y-1">
-                  <div className="flex justify-between text-sm">
-                    <span>Subtotal:</span>
-                    <span>KES {lastTransaction.totals.subtotal.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span>Tax:</span>
-                    <span>KES {lastTransaction.totals.tax.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between font-bold">
-                    <span>Total:</span>
-                    <span>KES {lastTransaction.totals.total.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm text-neutral-600">
-                    <span>Payment:</span>
-                    <span>{lastTransaction.paymentMethod.toUpperCase()}</span>
-                  </div>
-                  {lastTransaction.cashAmount && (
-                    <div className="flex justify-between text-sm text-neutral-600">
-                      <span>Change:</span>
-                      <span>KES {(lastTransaction.cashAmount - lastTransaction.totals.total).toLocaleString()}</span>
-                    </div>
-                  )}
+                <div className="flex justify-between font-bold border-t border-neutral-200 pt-2 text-sm">
+                  <span>Total:</span>
+                  <span>KES {lastTransaction.totals.total.toLocaleString()}</span>
                 </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <button
-                  onClick={() => window.print()}
-                  className="flex items-center justify-center gap-2 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
-                >
-                  <Receipt className="w-4 h-4" />
-                  Print
-                </button>
+              <div className="flex justify-end">
                 <button
                   onClick={() => setShowReceipt(false)}
-                  className="px-4 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  className="px-4 py-2 rounded bg-primary text-white hover:bg-primary-dark"
                 >
-                  Continue
+                  Close
                 </button>
               </div>
             </motion.div>
