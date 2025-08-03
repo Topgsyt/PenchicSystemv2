@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { UserPlus, Trash2, Shield, Search, Filter, ChevronLeft, ChevronRight, Calendar, Mail, User as UserIcon, Eye, EyeOff } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Search, Filter, ChevronLeft, ChevronRight, Calendar, Mail, User as UserIcon, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from '../../components/admin/AdminLayout';
 
@@ -17,7 +17,8 @@ const UserManagement = () => {
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
-    role: 'customer'
+    role: 'customer',
+    status: 'active'
   });
   const [showAddForm, setShowAddForm] = useState(false);
 
@@ -31,12 +32,21 @@ const UserManagement = () => {
         .from('profiles')
         .select(`
           *,
-          orders(count)
+          orders(count),
+          created_at
         `)
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
       if (error) throw error;
-      setUsers(data || []);
+      
+      // Add status based on last activity or default to active
+      const usersWithStatus = (data || []).map(user => ({
+        ...user,
+        status: user.status || 'active', // Default to active if no status
+        last_login: user.last_login || user.created_at
+      }));
+      
+      setUsers(usersWithStatus);
     } catch (error) {
       console.error('Error fetching users:', error);
     } finally {
@@ -75,6 +85,7 @@ const UserManagement = () => {
               id: authData.user.id,
               email: newUser.email,
               role: newUser.role,
+              status: newUser.status,
             },
           ]);
 
@@ -82,7 +93,7 @@ const UserManagement = () => {
       }
 
       // Reset form and refresh
-      setNewUser({ email: '', password: '', role: 'customer' });
+      setNewUser({ email: '', password: '', role: 'customer', status: 'active' });
       setShowAddForm(false);
       fetchUsers();
       alert('User created successfully!');
@@ -91,6 +102,24 @@ const UserManagement = () => {
       alert(`Error adding user: ${error.message}`);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleStatusToggle = async (userId: string, currentStatus: string) => {
+    const newStatus = currentStatus === 'active' ? 'inactive' : 'active';
+    
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ status: newStatus })
+        .eq('id', userId);
+
+      if (error) throw error;
+      fetchUsers();
+      alert(`User status updated to ${newStatus}`);
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert(`Error updating status: ${error.message}`);
     }
   };
 
@@ -255,6 +284,19 @@ const UserManagement = () => {
                         <option value="admin">Admin</option>
                       </select>
                     </div>
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Status
+                      </label>
+                      <select
+                        value={newUser.status}
+                        onChange={(e) => setNewUser({ ...newUser, status: e.target.value })}
+                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
+                      >
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                      </select>
+                    </div>
                   </div>
                   
                   <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6 border-t border-neutral-200">
@@ -342,25 +384,42 @@ const UserManagement = () => {
                         <div>
                           <p className="font-medium text-neutral-900">{user.email}</p>
                           <p className="text-sm text-neutral-500">ID: {user.id.slice(0, 8)}...</p>
+                          <div className="flex items-center gap-2 mt-1">
+                            {user.status === 'active' ? (
+                              <CheckCircle className="w-4 h-4 text-green-500" />
+                            ) : (
+                              <XCircle className="w-4 h-4 text-red-500" />
+                            )}
+                            <span className={`text-xs font-medium ${
+                              user.status === 'active' ? 'text-green-600' : 'text-red-600'
+                            }`}>
+                              {user.status === 'active' ? 'Active' : 'Inactive'}
+                            </span>
+                          </div>
                         </div>
                       </div>
                     </td>
                     <td className="p-4">
-                      <select
-                        value={user.role}
-                        onChange={(e) => handleUpdateRole(user.id, e.target.value)}
-                        className={`px-3 py-1.5 rounded-full text-sm font-medium border-0 focus:ring-2 focus:ring-primary/20 touch-target ${
-                          user.role === 'admin' 
-                            ? 'bg-red-100 text-red-700' 
-                            : user.role === 'worker'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        <option value="customer">Customer</option>
-                        <option value="worker">Worker</option>
-                        <option value="admin">Admin</option>
-                      </select>
+                      <div className="space-y-2">
+                        <select
+                          value={user.role}
+                          onChange={(e) => handleUpdateRole(user.id, e.target.value)}
+                          className={`px-3 py-1.5 rounded-full text-sm font-medium border-0 focus:ring-2 focus:ring-primary/20 touch-target ${
+                            user.role === 'admin' 
+                              ? 'bg-red-100 text-red-700' 
+                              : user.role === 'worker'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}
+                        >
+                          <option value="customer">Customer</option>
+                          <option value="worker">Worker</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <div className="text-xs text-neutral-500">
+                          Role: {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                        </div>
+                      </div>
                     </td>
                     <td className="p-4">
                       <div className="text-sm text-neutral-900">
@@ -384,6 +443,21 @@ const UserManagement = () => {
                     </td>
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-2">
+                        <button
+                          onClick={() => handleStatusToggle(user.id, user.status)}
+                          className={`p-2 rounded-lg transition-colors touch-target ${
+                            user.status === 'active' 
+                              ? 'hover:bg-red-50 text-red-500' 
+                              : 'hover:bg-green-50 text-green-500'
+                          }`}
+                          title={user.status === 'active' ? 'Deactivate user' : 'Activate user'}
+                        >
+                          {user.status === 'active' ? (
+                            <XCircle className="w-4 h-4" />
+                          ) : (
+                            <CheckCircle className="w-4 h-4" />
+                          )}
+                        </button>
                         <button
                           onClick={() => setShowUserDetails(showUserDetails === user.id ? null : user.id)}
                           className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target"
