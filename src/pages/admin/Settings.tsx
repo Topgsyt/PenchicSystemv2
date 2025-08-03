@@ -25,7 +25,11 @@ import {
   Lock,
   Users,
   BarChart3,
-  Zap
+  Zap,
+  Building,
+  Calculator,
+  Tag,
+  Receipt
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -40,6 +44,37 @@ const Settings = () => {
     currentPassword: '',
     newPassword: '',
     confirmPassword: ''
+  });
+  
+  const [settings, setSettings] = useState({
+    // Business Settings
+    businessName: 'Penchic Farm',
+    businessAddress: 'Limuru, Kiambu County, Kenya',
+    businessPhone: '+254 722 395 370',
+    businessEmail: 'info@penchicfarm.com',
+    taxId: 'P051234567A',
+    
+    // Appearance Settings
+    fontSize: 'medium',
+    layoutSpacing: 'comfortable',
+    
+    // Tax Settings
+    vatRate: 16,
+    serviceTaxRate: 0,
+    
+    // Discount Settings
+    maxDiscountPercent: 50,
+    allowNegativeStock: false,
+    
+    // Notification Settings
+    lowStockAlert: true,
+    orderNotifications: true,
+    emailNotifications: true,
+    
+    // Receipt Settings
+    showLogo: true,
+    showBusinessInfo: true,
+    footerMessage: 'Thank you for your business!'
   });
   
   const [systemSettings, setSystemSettings] = useState({
@@ -103,7 +138,7 @@ const Settings = () => {
   });
   
   // UI states
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState('business');
   const [showPassword, setShowPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -157,6 +192,31 @@ const Settings = () => {
     setMessage({ type, text });
     setTimeout(() => setMessage({ type: '', text: '' }), 5000);
   };
+
+  const handleSettingChange = (key: string, value: any) => {
+    setSettings(prev => ({ ...prev, [key]: value }));
+  };
+
+  // Apply settings to CSS variables
+  useEffect(() => {
+    const root = document.documentElement;
+    
+    // Font size
+    const fontSizes = {
+      small: '14px',
+      medium: '16px',
+      large: '18px'
+    };
+    root.style.setProperty('--font-size-base', fontSizes[settings.fontSize as keyof typeof fontSizes]);
+    
+    // Layout spacing
+    const spacings = {
+      compact: '0.5rem',
+      comfortable: '1rem',
+      spacious: '1.5rem'
+    };
+    root.style.setProperty('--layout-spacing', spacings[settings.layoutSpacing as keyof typeof spacings]);
+  }, [settings]);
 
   const handleProfileUpdate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -250,9 +310,14 @@ const Settings = () => {
   };
 
   const tabs = [
+    { id: 'business', label: 'Business Info', icon: Building },
+    { id: 'appearance', label: 'Appearance', icon: Palette },
+    { id: 'tax', label: 'Tax Rates', icon: Calculator },
+    { id: 'discounts', label: 'Discounts', icon: Tag },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'receipt', label: 'Receipt', icon: Receipt },
     { id: 'profile', label: 'Profile', icon: User },
     { id: 'theme', label: 'Theme', icon: Palette },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'security', label: 'Security', icon: Shield },
     { id: 'system', label: 'System', icon: SettingsIcon },
     { id: 'integrations', label: 'Integrations', icon: Zap },
@@ -318,6 +383,165 @@ const Settings = () => {
           </div>
 
           <div className="p-6">
+            {/* Business Settings */}
+            {activeTab === 'business' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div>
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Business Information</h3>
+                  <p className="text-neutral-600">Update your business details and contact information</p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Business Name
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.businessName}
+                      onChange={(e) => handleSettingChange('businessName', e.target.value)}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Business Email
+                    </label>
+                    <input
+                      type="email"
+                      value={settings.businessEmail}
+                      onChange={(e) => handleSettingChange('businessEmail', e.target.value)}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Business Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={settings.businessPhone}
+                      onChange={(e) => handleSettingChange('businessPhone', e.target.value)}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Tax ID
+                    </label>
+                    <input
+                      type="text"
+                      value={settings.taxId}
+                      onChange={(e) => handleSettingChange('taxId', e.target.value)}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-neutral-700 mb-2">
+                    Business Address
+                  </label>
+                  <textarea
+                    value={settings.businessAddress}
+                    onChange={(e) => handleSettingChange('businessAddress', e.target.value)}
+                    rows={3}
+                    className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                  />
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleSettingsUpdate('businessSettings', settings)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Save className="w-4 h-4" />
+                    {loading ? 'Saving...' : 'Save Business Info'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
+            {/* Appearance Settings */}
+            {activeTab === 'appearance' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-6"
+              >
+                <div>
+                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Appearance Settings</h3>
+                  <p className="text-neutral-600">Customize the look and feel of your admin panel</p>
+                </div>
+
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Font Size
+                      </label>
+                      <select
+                        value={settings.fontSize}
+                        onChange={(e) => handleSettingChange('fontSize', e.target.value)}
+                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      >
+                        <option value="small">Small</option>
+                        <option value="medium">Medium</option>
+                        <option value="large">Large</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Layout Spacing
+                      </label>
+                      <select
+                        value={settings.layoutSpacing}
+                        onChange={(e) => handleSettingChange('layoutSpacing', e.target.value)}
+                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      >
+                        <option value="compact">Compact</option>
+                        <option value="comfortable">Comfortable</option>
+                        <option value="spacious">Spacious</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
+                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">Preview</h3>
+                    <div className="space-y-4">
+                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
+                        <h4 className="font-medium text-neutral-900 mb-2">Sample Dashboard Card</h4>
+                        <p className="text-neutral-600 text-sm">
+                          This preview shows how your settings will appear across the admin panel.
+                          Font size and spacing adjustments are applied in real-time.
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end">
+                  <button
+                    onClick={() => handleSettingsUpdate('appearanceSettings', settings)}
+                    disabled={loading}
+                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <Save className="w-4 h-4" />
+                    {loading ? 'Saving...' : 'Save Appearance Settings'}
+                  </button>
+                </div>
+              </motion.div>
+            )}
+
             {/* Profile Settings */}
             {activeTab === 'profile' && (
               <motion.div

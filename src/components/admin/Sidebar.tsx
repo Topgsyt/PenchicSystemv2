@@ -90,10 +90,11 @@ const Sidebar: React.FC<SidebarProps> = ({
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className={`
-          fixed lg:sticky lg:top-0 left-0 h-screen lg:h-screen bg-white border-r border-neutral-200 z-50 flex flex-col overflow-hidden
+          fixed lg:sticky lg:top-0 left-0 h-screen bg-white border-r border-neutral-200 z-50 flex flex-col
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           shadow-xl lg:shadow-none
         `}
+        style={{ position: 'sticky', top: 0 }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 lg:p-6 border-b border-neutral-200 min-h-[64px] lg:min-h-[80px]">
@@ -136,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 p-3 lg:p-4 space-y-1 lg:space-y-2 overflow-y-auto scrollbar-thin">
+        <nav className="flex-1 p-3 lg:p-4 space-y-1 lg:space-y-2 overflow-y-auto scrollbar-thin" style={{ maxHeight: 'calc(100vh - 200px)' }}>
           {menuItems.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.path, item.exact);

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Bell, Check, AlertCircle, Info, Clock, X, Wifi, WifiOff, Users, ShoppingCart, Package, AlertTriangle } from 'lucide-react';
+import { Bell, Check, AlertCircle, Info, Clock, X, Wifi, WifiOff, Users, ShoppingCart, Package, AlertTriangle, TrendingUp } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRealTimeNotifications, Notification } from '../../hooks/useRealTimeNotifications';
 
@@ -39,6 +39,8 @@ const RealTimeNotifications: React.FC = () => {
         return <Package className="w-4 h-4 text-yellow-500" />;
       case 'system_alert':
         return <AlertTriangle className="w-4 h-4 text-red-500" />;
+      case 'analytics_milestone':
+        return <TrendingUp className="w-4 h-4 text-purple-500" />;
       case 'content_submission':
         return <Info className="w-4 h-4 text-purple-500" />;
       default:
@@ -69,6 +71,8 @@ const RealTimeNotifications: React.FC = () => {
           return 'bg-green-50 border-green-100';
         case 'new_user':
           return 'bg-blue-50 border-blue-100';
+        case 'analytics_milestone':
+          return 'bg-purple-50 border-purple-100';
         default:
           return 'bg-purple-50 border-purple-100';
       }
@@ -187,6 +191,19 @@ const RealTimeNotifications: React.FC = () => {
                               <p className="text-sm text-neutral-600 mt-1 line-clamp-2">
                                 {notification.message}
                               </p>
+                              {notification.data && (
+                                <div className="mt-2 text-xs text-neutral-500 bg-neutral-100 rounded px-2 py-1">
+                                  {notification.type === 'order_update' && notification.data.total && (
+                                    <span>Order Total: KES {notification.data.total.toLocaleString()}</span>
+                                  )}
+                                  {notification.type === 'low_stock' && notification.data.stock && (
+                                    <span>Stock Level: {notification.data.stock} units</span>
+                                  )}
+                                  {notification.type === 'analytics_milestone' && notification.data.value && (
+                                    <span>Milestone: {notification.data.value}</span>
+                                  )}
+                                </div>
+                              )}
                             </div>
                             
                             {!notification.read && (

@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase';
 
 export interface Notification {
   id: string;
-  type: 'new_user' | 'order_update' | 'system_alert' | 'low_stock' | 'content_submission';
+  type: 'new_user' | 'order_update' | 'system_alert' | 'low_stock' | 'content_submission' | 'analytics_milestone';
   title: string;
   message: string;
   timestamp: Date;
@@ -171,7 +171,26 @@ export const useRealTimeNotifications = (): UseRealTimeNotificationsReturn => {
         )
         .subscribe();
 
-      subscriptionsRef.current = [profilesSubscription, ordersSubscription, productsSubscription];
+      // Subscribe to analytics milestones (simulated for demo)
+      const analyticsSubscription = supabase
+        .channel('analytics_changes')
+        .on('postgres_changes',
+          { event: 'INSERT', schema: 'public', table: 'orders' },
+          (payload) => {
+            // Simulate analytics milestone notifications
+            const order = payload.new;
+            if (order.total >= 10000) { // Milestone for large orders
+              addNotification({
+                type: 'analytics_milestone',
+                title: 'Large Order Received',
+                message: `High-value order of KES ${order.total.toLocaleString()} received`,
+                data: { value: order.total, type: 'large_order' }
+              });
+            }
+          }
+        )
+        .subscribe();
+      subscriptionsRef.current = [profilesSubscription, ordersSubscription, productsSubscription, analyticsSubscription];
 
     } catch (error) {
       console.error('Error setting up subscriptions:', error);
