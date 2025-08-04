@@ -427,18 +427,27 @@ const POSInterface = () => {
 
         {/* Mobile collapsed cart trigger - floating button when fully collapsed */}
         {isCartCollapsed && (
-          <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40 lg:hidden">
+          <div className="fixed right-3 sm:right-4 bottom-6 sm:bottom-8 lg:top-1/2 lg:bottom-auto lg:transform lg:-translate-y-1/2 z-40 lg:hidden">
             <button
               onClick={() => setIsCartCollapsed(false)}
-              className="bg-primary text-white p-4 rounded-full shadow-2xl hover:bg-primary-dark transition-all duration-300 hover:scale-110 relative"
+              className="group bg-primary text-white p-3 sm:p-4 rounded-full shadow-2xl hover:bg-primary-dark transition-all duration-300 hover:scale-110 relative active:scale-95 touch-manipulation"
               title="Open cart"
             >
-              <ShoppingCart className="w-6 h-6" />
+              <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 transition-transform group-hover:scale-110" />
               {cart.length > 0 && (
-                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                <span className="absolute -top-1 -right-1 sm:-top-2 sm:-right-2 bg-red-500 text-white text-xs font-bold rounded-full min-w-[20px] h-5 sm:min-w-[24px] sm:h-6 flex items-center justify-center shadow-lg animate-pulse">
                   {cart.reduce((sum, item) => sum + item.quantity, 0)}
                 </span>
               )}
+              
+              {/* Ripple effect on tap */}
+              <div className="absolute inset-0 rounded-full bg-white/20 opacity-0 group-active:opacity-100 group-active:animate-ping"></div>
+              
+              {/* Floating label */}
+              <div className="absolute right-full mr-3 top-1/2 transform -translate-y-1/2 bg-neutral-900 text-white px-3 py-1 rounded-lg text-sm font-medium opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap pointer-events-none">
+                View Cart
+                <div className="absolute left-full top-1/2 transform -translate-y-1/2 border-4 border-transparent border-l-neutral-900"></div>
+              </div>
             </button>
           </div>
         )}
