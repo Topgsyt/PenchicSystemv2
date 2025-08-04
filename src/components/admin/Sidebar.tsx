@@ -90,7 +90,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           transition: 'width 0.3s ease-in-out',
         }}
         className={`
-          fixed lg:sticky lg:top-0 left-0 h-screen bg-white border-r border-neutral-200 z-50 flex flex-col overflow-hidden
+          fixed left-0 top-0 h-screen bg-white border-r border-neutral-200 z-50 flex flex-col overflow-hidden
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           shadow-xl lg:shadow-none
         `}
