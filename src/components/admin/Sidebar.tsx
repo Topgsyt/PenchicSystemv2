@@ -85,16 +85,15 @@ const Sidebar: React.FC<SidebarProps> = ({
       {/* Sidebar */}
       <motion.aside
         initial={false}
-        animate={{
+        style={{
           width: isCollapsed ? '64px' : '280px',
+          transition: 'width 0.3s ease-in-out',
         }}
-        transition={{ duration: 0.3, ease: 'easeInOut' }}
         className={`
           fixed lg:sticky lg:top-0 left-0 h-screen bg-white border-r border-neutral-200 z-50 flex flex-col overflow-hidden
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           shadow-xl lg:shadow-none
         `}
-        style={{ position: 'sticky !important', top: 0, maxHeight: '100vh' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 lg:p-6 border-b border-neutral-200 min-h-[64px] lg:min-h-[80px]">
