@@ -14,7 +14,7 @@ import {
   ChevronRight,
   LogOut,
   User,
-  Package2, // ✅ FIX: Add missing icon
+  Package2,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store';
@@ -84,10 +84,12 @@ const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Sidebar */}
       <motion.aside
-        initial={false}
-        style={{
-          width: isCollapsed ? '64px' : '280px',
-          transition: 'width 0.3s ease-in-out',
+        animate={{
+          width: isCollapsed ? 64 : 280,
+        }}
+        transition={{
+          duration: 0.3,
+          ease: "easeInOut"
         }}
         className={`
           fixed lg:relative left-0 top-16 lg:top-0 h-[calc(100vh-4rem)] lg:h-screen bg-white border-r border-neutral-200 z-50 lg:z-10 flex flex-col overflow-hidden
@@ -114,6 +116,18 @@ const Sidebar: React.FC<SidebarProps> = ({
             )}
           </AnimatePresence>
 
+          {isCollapsed && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center justify-center w-full"
+            >
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Store className="w-5 h-5 text-white" />
+              </div>
+            </motion.div>
+          )}
+
           {/* Mobile Close Button */}
           <button
             onClick={onMobileToggle}
@@ -123,17 +137,27 @@ const Sidebar: React.FC<SidebarProps> = ({
           </button>
 
           {/* Desktop Collapse Toggle */}
-          <button
-            onClick={onToggleCollapse}
-            className="hidden lg:flex p-2 hover:bg-neutral-100 rounded-lg transition-colors"
-          >
-            {isCollapsed ? (
-              <ChevronRight className="w-5 h-5 text-neutral-600" />
-            ) : (
+          {!isCollapsed && (
+            <button
+              onClick={onToggleCollapse}
+              className="hidden lg:flex p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
               <ChevronLeft className="w-5 h-5 text-neutral-600" />
-            )}
-          </button>
+            </button>
+          )}
         </div>
+
+        {/* Collapse Toggle for Collapsed State */}
+        {isCollapsed && (
+          <div className="hidden lg:flex justify-center p-2 border-b border-neutral-200">
+            <button
+              onClick={onToggleCollapse}
+              className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
+              <ChevronRight className="w-5 h-5 text-neutral-600" />
+            </button>
+          </div>
+        )}
 
         {/* Navigation */}
         <nav className="flex-1 p-3 lg:p-4 space-y-1 lg:space-y-2 overflow-y-auto scrollbar-thin scrollbar-track-neutral-100 scrollbar-thumb-neutral-300 hover:scrollbar-thumb-neutral-400">
@@ -146,17 +170,19 @@ const Sidebar: React.FC<SidebarProps> = ({
                 key={item.path}
                 to={item.path}
                 onClick={() => window.innerWidth < 1024 && onMobileToggle()}
-                className={`min-h-[44px]
+                className={`min-h-[44px] group relative
                   flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200
                   ${
                     active
                       ? 'bg-primary text-white shadow-lg shadow-primary/25'
                       : 'text-neutral-600 hover:bg-neutral-100 hover:text-neutral-900'
                   }
-                  ${isCollapsed ? 'justify-center' : ''}
+                  ${isCollapsed ? 'justify-center px-3' : ''}
                 `}
+                title={isCollapsed ? item.label : ''}
               >
                 <Icon className="w-5 h-5 lg:w-6 lg:h-6 flex-shrink-0" />
+                
                 <AnimatePresence>
                   {!isCollapsed && (
                     <motion.span
@@ -164,12 +190,20 @@ const Sidebar: React.FC<SidebarProps> = ({
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: -10 }}
                       transition={{ duration: 0.2 }}
-                      className="font-medium text-sm lg:text-base"
+                      className="font-medium text-sm lg:text-base whitespace-nowrap"
                     >
                       {item.label}
                     </motion.span>
                   )}
                 </AnimatePresence>
+
+                {/* Tooltip for collapsed state */}
+                {isCollapsed && (
+                  <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                    {item.label}
+                    <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45"></div>
+                  </div>
+                )}
               </Link>
             );
           })}
@@ -178,13 +212,14 @@ const Sidebar: React.FC<SidebarProps> = ({
         {/* User Profile Section */}
         <div className="p-3 lg:p-4 border-t border-neutral-200 flex-shrink-0">
           <div
-            className={`min-h-[44px] flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-100 transition-colors ${
-              isCollapsed ? 'justify-center' : ''
+            className={`min-h-[44px] flex items-center gap-3 p-3 rounded-xl hover:bg-neutral-100 transition-colors relative group ${
+              isCollapsed ? 'justify-center px-3' : ''
             }`}
           >
             <div className="w-7 h-7 lg:w-8 lg:h-8 bg-primary rounded-full flex items-center justify-center flex-shrink-0">
               <User className="w-4 h-4 text-white" />
             </div>
+            
             <AnimatePresence>
               {!isCollapsed && (
                 <motion.div
@@ -203,11 +238,20 @@ const Sidebar: React.FC<SidebarProps> = ({
                 </motion.div>
               )}
             </AnimatePresence>
+
+            {/* User tooltip for collapsed state */}
+            {isCollapsed && (
+              <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                <p className="font-medium">{user?.role === 'admin' ? 'Administrator' : 'User'}</p>
+                <p className="text-xs opacity-75">{user?.email}</p>
+                <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45"></div>
+              </div>
+            )}
           </div>
 
           {/* Logout Button */}
           <AnimatePresence>
-            {!isCollapsed && (
+            {!isCollapsed ? (
               <motion.button
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -219,6 +263,24 @@ const Sidebar: React.FC<SidebarProps> = ({
               >
                 <LogOut className="w-4 h-4" />
                 {isLoggingOut ? 'Logging out...' : 'Logout'}
+              </motion.button>
+            ) : (
+              <motion.button
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.8 }}
+                onClick={handleLogout}
+                disabled={isLoggingOut}
+                className="w-full mt-2 flex items-center justify-center p-3 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 min-h-[44px] group relative"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+                
+                {/* Logout tooltip */}
+                <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                  {isLoggingOut ? 'Logging out...' : 'Logout'}
+                  <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45"></div>
+                </div>
               </motion.button>
             )}
           </AnimatePresence>
