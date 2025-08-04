@@ -457,7 +457,9 @@ const POSInterface = () => {
           isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'
         } ${
           isCartCollapsed ? (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'fixed inset-y-0 right-0 w-full max-w-sm z-50 transform translate-x-full' : 'w-16') : (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'fixed inset-y-0 right-0 w-full max-w-sm z-50 transform translate-x-0' : '')
-        } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-all duration-300 overflow-hidden`}>
+        } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-all duration-300 overflow-hidden ${
+          !isCartCollapsed && typeof window !== 'undefined' && window.innerWidth <= 768 ? 'touch-pan-y overscroll-contain' : ''
+        }`}>
 
           <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0">
             <div className="flex items-center justify-between mb-4 gap-2">
@@ -466,7 +468,7 @@ const POSInterface = () => {
               )}
               <button
                 onClick={() => setIsCartCollapsed(!isCartCollapsed)}
-                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target flex-shrink-0"
+                className="p-2 hover:bg-neutral-100 rounded-lg transition-colors touch-target flex-shrink-0 z-10"
                 title={isCartCollapsed ? 'Expand cart' : 'Collapse cart'}
               >
                 {isCartCollapsed ? (
@@ -509,7 +511,9 @@ const POSInterface = () => {
             )}
           </div>
 
-          <div className={`flex-1 overflow-y-auto p-3 sm:p-4 min-h-0 max-h-full ${isCartCollapsed ? 'hidden' : ''}`}>
+          <div className={`flex-1 overflow-y-auto p-3 sm:p-4 min-h-0 max-h-full ${isCartCollapsed ? 'hidden' : ''} ${
+            typeof window !== 'undefined' && window.innerWidth <= 768 ? 'overscroll-contain' : ''
+          }`}>
             {cart.length === 0 ? (
               <div className="flex items-center justify-center h-full">
                 <div className="text-center">
@@ -620,11 +624,17 @@ const POSInterface = () => {
           )}
         </div>
 
-        {/* Mobile overlay when cart is open */}
+        {/* Mobile overlay when cart is open - Improved touch handling */}
         {!isCartCollapsed && typeof window !== 'undefined' && window.innerWidth <= 768 && (
           <div 
             className="fixed inset-0 bg-black/50 z-40 lg:hidden"
             onClick={() => setIsCartCollapsed(true)}
+            style={{ 
+              touchAction: 'none',
+              WebkitTouchCallout: 'none',
+              WebkitUserSelect: 'none',
+              userSelect: 'none'
+            }}
           />
         )}
       </div>
