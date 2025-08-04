@@ -109,23 +109,6 @@ body {
   --tw-ring-color: rgb(43 87 65 / 0.2);
 }
 
-/* Custom scrollbar for webkit browsers */
-.scrollbar-thin::-webkit-scrollbar {
-  width: 6px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
 
 /* Admin layout specific styles */
 .admin-layout {
@@ -134,11 +117,12 @@ body {
 }
 
 .admin-sidebar {
-  position: sticky !important;
+  position: sticky;
   top: 0;
   height: 100vh;
   overflow-y: auto;
   z-index: 50;
+  max-height: 100vh;
 }
 
 .admin-content {
@@ -146,23 +130,6 @@ body {
   overflow-y: auto;
 }
 
-/* Fix sidebar scrolling issues */
-.admin-sidebar::-webkit-scrollbar {
-  width: 6px;
-}
-
-.admin-sidebar::-webkit-scrollbar-track {
-  background: #f1f1f1;
-}
-
-.admin-sidebar::-webkit-scrollbar-thumb {
-  background: #c1c1c1;
-  border-radius: 3px;
-}
-
-.admin-sidebar::-webkit-scrollbar-thumb:hover {
-  background: #a8a8a8;
-}
 
 /* Mobile POS optimizations */
 @media (max-width: 480px) {
@@ -189,6 +156,50 @@ body {
     width: 60px !important;
     min-width: 60px !important;
   }
+}
+
+/* Enhanced scrollbar styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #c1c1c1 #f1f1f1;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: transparent;
+  border-radius: 4px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+  border: 2px solid transparent;
+  background-clip: content-box;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+  background-clip: content-box;
+}
+
+.scrollbar-track-neutral-100::-webkit-scrollbar-track {
+  background: #f5f5f5;
+}
+
+.scrollbar-thumb-neutral-300::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+}
+
+.scrollbar-thumb-neutral-400::-webkit-scrollbar-thumb {
+  background: #9ca3af;
+}
+
+.hover\:scrollbar-thumb-neutral-400:hover::-webkit-scrollbar-thumb {
+  background: #9ca3af;
 }
 
 @layer utilities {

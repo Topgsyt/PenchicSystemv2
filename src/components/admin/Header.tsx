@@ -12,18 +12,32 @@ import {
   AlertCircle,
   Info,
   Clock,
-  ChevronDown
+  ChevronDown,
+  Bell,
+  Package,
+  ShoppingCart,
+  Users,
+  TrendingUp
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import RealTimeNotifications from './RealTimeNotifications';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
   title?: string;
   subtitle?: string;
+}
+
+interface Notification {
+  id: string;
+  type: 'new_order' | 'low_stock' | 'analytics_milestone' | 'user_registration';
+  title: string;
+  message: string;
+  timestamp: Date;
+  read: boolean;
+  data?: any;
 }
 
 interface SearchResult {
@@ -37,10 +51,13 @@ interface SearchResult {
 const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) => {
   const [isDarkMode, setIsDarkMode] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
   const [showSearchResults, setShowSearchResults] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<SearchResult[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
   
   const user = useStore((state) => state.user);
   const setUser = useStore((state) => state.setUser);
@@ -48,6 +65,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
   
   const accountRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
+  const notificationRef = useRef<HTMLDivElement>(null);
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -58,11 +76,123 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
       if (searchRef.current && !searchRef.current.contains(event.target as Node)) {
         setShowSearchResults(false);
       }
+      if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+        setShowNotifications(false);
+      }
     };
 
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  // Real-time notifications setup
+  useEffect(() => {
+    const setupNotifications = () => {
+      try {
+        // Subscribe to new orders
+        const ordersSubscription = supabase
+          .channel('orders_changes')
+          .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'orders' },
+            (payload) => {
+              addNotification({
+                type: 'new_order',
+                title: 'New Order Received',
+                message: `Order #${payload.new.id.slice(0, 8)} - KES ${payload.new.total.toLocaleString()}`,
+                data: payload.new
+              });
+            }
+          )
+          .subscribe((status) => {
+            setIsConnected(status === 'SUBSCRIBED');
+          });
+
+        // Subscribe to stock updates
+        const productsSubscription = supabase
+          .channel('products_changes')
+          .on('postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'products' },
+            (payload) => {
+              const product = payload.new;
+              if (product.stock <= 5 && product.stock > 0) {
+                addNotification({
+                  type: 'low_stock',
+                  title: 'Low Stock Alert',
+                  message: `${product.name} is running low (${product.stock} units left)`,
+                  data: product
+                });
+              }
+            }
+          )
+          .subscribe();
+
+        // Subscribe to new user registrations
+        const profilesSubscription = supabase
+          .channel('profiles_changes')
+          .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'profiles' },
+            (payload) => {
+              addNotification({
+                type: 'user_registration',
+                title: 'New User Registration',
+                message: `${payload.new.email} registered as ${payload.new.role}`,
+                data: payload.new
+              });
+            }
+          )
+          .subscribe();
+
+        return () => {
+          ordersSubscription.unsubscribe();
+          productsSubscription.unsubscribe();
+          profilesSubscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error setting up notifications:', error);
+        setIsConnected(false);
+      }
+    };
+
+    const cleanup = setupNotifications();
+    return cleanup;
+  }, []);
+
+  // Add notification function
+  const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
+    const newNotification: Notification = {
+      ...notification,
+      id: crypto.randomUUID(),
+      timestamp: new Date(),
+      read: false
+    };
+
+    setNotifications(prev => [newNotification, ...prev].slice(0, 50));
+
+    // Show browser notification if permission granted
+    if (Notification.permission === 'granted') {
+      new Notification(notification.title, {
+        body: notification.message,
+        icon: '/favicon.ico'
+      });
+    }
+  };
+
+  // Mark notification as read
+  const markAsRead = (id: string) => {
+    setNotifications(prev =>
+      prev.map(n => n.id === id ? { ...n, read: true } : n)
+    );
+  };
+
+  // Mark all notifications as read
+  const markAllAsRead = () => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  };
+
+  // Clear all notifications
+  const clearAllNotifications = () => {
+    setNotifications([]);
+  };
 
   // Global search functionality
   const handleSearch = async (query: string) => {
@@ -151,11 +281,12 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
     }
   };
 
-  const getNotificationIcon = (type: string) => {
+  const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
-      case 'success': return <Check className="w-4 h-4 text-green-500" />;
-      case 'warning': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
-      case 'error': return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case 'new_order': return <ShoppingCart className="w-4 h-4 text-green-500" />;
+      case 'low_stock': return <Package className="w-4 h-4 text-yellow-500" />;
+      case 'analytics_milestone': return <TrendingUp className="w-4 h-4 text-purple-500" />;
+      case 'user_registration': return <Users className="w-4 h-4 text-blue-500" />;
       default: return <Info className="w-4 h-4 text-blue-500" />;
     }
   };
@@ -179,6 +310,14 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
     return `${Math.floor(diffInMinutes / 1440)}d ago`;
   };
 
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  // Request notification permission
+  useEffect(() => {
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+  }, []);
   return (
     <header className="bg-white border-b border-neutral-200 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 sticky top-0 z-40">
       <div className="flex items-center justify-between">
@@ -287,8 +426,146 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             )}
           </motion.button>
 
-          {/* Real-time Notifications */}
-          <RealTimeNotifications />
+          {/* Notifications */}
+          <div className="relative" ref={notificationRef}>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
+              <Bell className="w-5 h-5 text-neutral-600" />
+              {unreadCount > 0 && (
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 min-w-[20px] h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center px-1 font-medium"
+                >
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </motion.span>
+              )}
+              <div className="absolute -bottom-1 -right-1">
+                <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+              </div>
+            </motion.button>
+
+            {/* Notifications Dropdown */}
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  className="absolute top-full right-0 mt-2 w-80 sm:w-96 bg-white border border-neutral-200 rounded-xl shadow-xl z-50 max-h-[80vh] flex flex-col"
+                >
+                  {/* Header */}
+                  <div className="p-4 border-b border-neutral-200 flex items-center justify-between bg-neutral-50 rounded-t-xl">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold text-neutral-900">Notifications</h3>
+                      {!isConnected && (
+                        <div className="flex items-center gap-1 text-xs text-red-600 bg-red-100 px-2 py-1 rounded-full">
+                          <div className="w-2 h-2 bg-red-500 rounded-full"></div>
+                          <span>Offline</span>
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-xs text-primary hover:text-primary-dark transition-colors font-medium px-2 py-1"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      <button
+                        onClick={clearAllNotifications}
+                        className="text-xs text-red-500 hover:text-red-600 transition-colors font-medium px-2 py-1"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Notifications List */}
+                  <div className="flex-1 overflow-y-auto max-h-96">
+                    {notifications.length > 0 ? (
+                      <div className="divide-y divide-neutral-100">
+                        {notifications.map((notification) => (
+                          <motion.div
+                            key={notification.id}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            className={`p-4 hover:bg-neutral-50 cursor-pointer transition-colors ${
+                              !notification.read ? 'bg-blue-50 border-l-4 border-l-primary' : ''
+                            }`}
+                            onClick={() => markAsRead(notification.id)}
+                          >
+                            <div className="flex items-start gap-3">
+                              <div className="flex-shrink-0 mt-0.5">
+                                {getNotificationIcon(notification.type)}
+                              </div>
+                              
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="flex-1 min-w-0">
+                                    <p className="font-medium text-neutral-900 text-sm truncate">
+                                      {notification.title}
+                                    </p>
+                                    <p className="text-sm text-neutral-600 mt-1">
+                                      {notification.message}
+                                    </p>
+                                    {notification.data && (
+                                      <div className="mt-2 text-xs text-neutral-500 bg-neutral-100 rounded px-2 py-1">
+                                        {notification.type === 'new_order' && notification.data.total && (
+                                          <span>Order Total: KES {notification.data.total.toLocaleString()}</span>
+                                        )}
+                                        {notification.type === 'low_stock' && notification.data.stock && (
+                                          <span>Stock Level: {notification.data.stock} units</span>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {!notification.read && (
+                                    <div className="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2"></div>
+                                  )}
+                                </div>
+                                
+                                <div className="flex items-center gap-1 text-xs text-neutral-500 mt-2">
+                                  <Clock className="w-3 h-3" />
+                                  <span>{formatTimeAgo(notification.timestamp)}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </motion.div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="p-8 text-center text-neutral-500">
+                        <Bell className="w-12 h-12 mx-auto mb-3 text-neutral-300" />
+                        <p className="font-medium">No notifications</p>
+                        <p className="text-sm mt-1">You're all caught up!</p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Footer */}
+                  {notifications.length > 0 && (
+                    <div className="p-3 border-t border-neutral-200 bg-neutral-50 rounded-b-xl">
+                      <div className="flex items-center justify-between text-xs text-neutral-500">
+                        <span>{notifications.length} total notifications</span>
+                        <div className="flex items-center gap-1">
+                          <div className={`w-2 h-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                          <span>{isConnected ? 'Live updates' : 'Reconnecting...'}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Account Menu */}
           <div className="relative" ref={accountRef}>
