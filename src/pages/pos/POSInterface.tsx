@@ -757,25 +757,25 @@ const POSInterface = () => {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-2xl w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              {/* Success Header */}
-              <div className="text-center p-6 pb-4">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
+              {/* Success Header - Included in print */}
+              <div className="text-center p-6 pb-4 print:p-4 print:pb-2">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 print:w-12 print:h-12 print:mb-2">
+                  <CheckCircle className="w-8 h-8 text-green-600 print:w-6 print:h-6" />
                 </div>
-                <h2 className="text-xl font-bold text-neutral-900 mb-1">Payment Successful!</h2>
-                <p className="text-neutral-600 text-sm">Transaction completed successfully</p>
+                <h2 className="text-xl font-bold text-neutral-900 mb-1 print:text-lg">Payment Successful!</h2>
+                <p className="text-neutral-600 text-sm print:text-xs">Transaction completed successfully</p>
               </div>
 
               {/* Receipt Container */}
-              <div className="mx-6 mb-6 bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden">
+              <div className="mx-6 mb-6 bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden print:mx-0 print:mb-0 print:border-0 print:shadow-none print:rounded-none">
                 {/* Business Header */}
-                <div className="bg-gradient-to-r from-primary to-primary-dark px-6 py-4 text-white">
+                <div className="bg-gradient-to-r from-primary to-primary-dark px-6 py-4 text-white print:bg-white print:text-black print:py-2">
                   <div className="text-center">
-                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2">
+                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2 print:bg-primary print:text-white">
                       <ShoppingCart className="w-6 h-6" />
                     </div>
                     <h3 className="text-xl font-bold">Penchic Farm</h3>
-                    <p className="text-white/80 text-sm">Premium Agricultural Products</p>
+                    <p className="text-white/80 text-sm print:text-neutral-600">Premium Agricultural Products</p>
                   </div>
                 </div>
 
@@ -898,8 +898,8 @@ const POSInterface = () => {
                 </div>
               </div>
 
-              {/* Action Buttons */}
-              <div className="px-6 pb-6">
+              {/* Action Buttons - Hidden when printing */}
+              <div className="px-6 pb-6 print:hidden">
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     onClick={() => window.print()}
