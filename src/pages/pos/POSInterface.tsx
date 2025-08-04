@@ -757,7 +757,7 @@ const POSInterface = () => {
               exit={{ scale: 0.9, opacity: 0 }}
               className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl max-h-[90vh] overflow-y-auto"
             >
-              <div className="text-center mb-6">
+              <div className="text-center mb-6 print:hidden">
                 <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <CheckCircle className="w-8 h-8 text-green-600" />
                 </div>
@@ -765,7 +765,7 @@ const POSInterface = () => {
                 <p className="text-neutral-600">Transaction completed successfully</p>
               </div>
 
-              <div className="bg-neutral-50 rounded-lg p-4 mb-6">
+              <div className="bg-neutral-50 rounded-lg p-4 mb-6 print:bg-white print:shadow-none print:border-none">
                 <div className="text-center mb-4">
                   <h3 className="font-bold text-lg">Penchic Farm</h3>
                   <p className="text-sm text-neutral-600">Receipt #{lastTransaction.orderId.slice(0, 8)}</p>
@@ -807,7 +807,7 @@ const POSInterface = () => {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 print:hidden">
                 <button
                   onClick={() => window.print()}
                   className="flex items-center justify-center gap-2 px-4 py-3 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
