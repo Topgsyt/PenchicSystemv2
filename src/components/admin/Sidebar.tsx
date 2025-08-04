@@ -92,10 +92,14 @@ const Sidebar: React.FC<SidebarProps> = ({
           ease: "easeInOut"
         }}
         className={`
-          fixed lg:relative left-0 top-16 lg:top-0 h-[calc(100vh-4rem)] lg:h-screen bg-white border-r border-neutral-200 z-50 lg:z-10 flex flex-col overflow-hidden
+          fixed lg:static left-0 top-16 lg:top-0 h-[calc(100vh-4rem)] lg:h-screen bg-white border-r border-neutral-200 z-50 lg:z-auto flex flex-col overflow-hidden
           ${isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           shadow-xl lg:shadow-none
         `}
+        style={{
+          // Ensure the sidebar doesn't affect document flow on desktop
+          position: window.innerWidth >= 1024 ? 'static' : 'fixed'
+        }}
       >
         {/* Header */}
         <div className="flex items-center justify-between p-4 lg:p-6 border-b border-neutral-200 min-h-[64px] lg:min-h-[80px]">
@@ -199,7 +203,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* Tooltip for collapsed state */}
                 {isCollapsed && (
-                  <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                  <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
                     {item.label}
                     <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45"></div>
                   </div>
@@ -241,7 +245,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
             {/* User tooltip for collapsed state */}
             {isCollapsed && (
-              <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+              <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
                 <p className="font-medium">{user?.role === 'admin' ? 'Administrator' : 'User'}</p>
                 <p className="text-xs opacity-75">{user?.email}</p>
                 <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45"></div>
@@ -277,7 +281,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                 <LogOut className="w-4 h-4" />
                 
                 {/* Logout tooltip */}
-                <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50">
+                <div className="absolute left-full ml-2 px-3 py-2 bg-neutral-900 text-white text-sm rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 whitespace-nowrap z-50 pointer-events-none">
                   {isLoggingOut ? 'Logging out...' : 'Logout'}
                   <div className="absolute top-1/2 -left-1 transform -translate-y-1/2 w-2 h-2 bg-neutral-900 rotate-45"></div>
                 </div>
