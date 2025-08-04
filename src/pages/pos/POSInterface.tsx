@@ -425,30 +425,30 @@ const POSInterface = () => {
           </div>
         </div>
 
+        {/* Mobile collapsed cart trigger - floating button when fully collapsed */}
+        {isCartCollapsed && (
+          <div className="fixed right-4 top-1/2 transform -translate-y-1/2 z-40 lg:hidden">
+            <button
+              onClick={() => setIsCartCollapsed(false)}
+              className="bg-primary text-white p-4 rounded-full shadow-2xl hover:bg-primary-dark transition-all duration-300 hover:scale-110 relative"
+              title="Open cart"
+            >
+              <ShoppingCart className="w-6 h-6" />
+              {cart.length > 0 && (
+                <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-6 h-6 flex items-center justify-center font-bold">
+                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                </span>
+              )}
+            </button>
+          </div>
+        )}
+
         {/* Cart Panel - Enhanced Mobile Collapse */}
         <div className={`${
           isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'
         } ${
-          isCartCollapsed ? (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'w-12' : 'w-16') : ''
-        } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-all duration-300 relative`}>
-          
-          {/* Mobile collapsed cart trigger - only visible when collapsed on mobile */}
-          {isCartCollapsed && (
-            <div className="lg:hidden absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-full">
-              <button
-                onClick={() => setIsCartCollapsed(false)}
-                className="bg-primary text-white p-3 rounded-l-lg shadow-lg hover:bg-primary-dark transition-colors relative"
-                title="Open cart"
-              >
-                <ShoppingCart className="w-5 h-5" />
-                {cart.length > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                  </span>
-                )}
-              </button>
-            </div>
-          )}
+          isCartCollapsed ? (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'w-0 opacity-0 pointer-events-none' : 'w-16') : ''
+        } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-all duration-300 overflow-hidden`}>
 
           <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0">
             <div className="flex items-center justify-between mb-4 gap-2">
@@ -472,23 +472,23 @@ const POSInterface = () => {
             </div>
             
             {!isCartCollapsed && (
-              <div className="flex items-center gap-2 text-sm text-neutral-500">
-                <Clock className="w-4 h-4" />
-                <span className="hidden sm:inline">{new Date().toLocaleTimeString()}</span>
-              </div>
-            )}
-            
-            {!isCartCollapsed && (
-              <div className="bg-neutral-50 rounded-lg p-3 sm:p-4">
-                <div className="flex justify-between text-sm">
-                  <span className="text-neutral-600">Items:</span>
-                  <span className="font-medium">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+              <>
+                <div className="flex items-center gap-2 text-sm text-neutral-500">
+                  <Clock className="w-4 h-4" />
+                  <span className="hidden sm:inline">{new Date().toLocaleTimeString()}</span>
                 </div>
-              </div>
+                
+                <div className="bg-neutral-50 rounded-lg p-3 sm:p-4 mt-4">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-neutral-600">Items:</span>
+                    <span className="font-medium">{cart.reduce((sum, item) => sum + item.quantity, 0)}</span>
+                  </div>
+                </div>
+              </>
             )}
             
-            {/* Collapsed state indicator */}
-            {isCartCollapsed && (
+            {/* Collapsed state indicator - only for desktop */}
+            {isCartCollapsed && typeof window !== 'undefined' && window.innerWidth > 768 && (
               <div className="flex flex-col items-center gap-2">
                 <div className="w-8 h-8 bg-primary/10 rounded-full flex items-center justify-center">
                   <ShoppingCart className="w-4 h-4 text-primary" />
@@ -593,8 +593,8 @@ const POSInterface = () => {
             </div>
           )}
           
-          {/* Collapsed cart summary */}
-          {cart.length > 0 && isCartCollapsed && (
+          {/* Collapsed cart summary - only for desktop */}
+          {cart.length > 0 && isCartCollapsed && typeof window !== 'undefined' && window.innerWidth > 768 && (
             <div className="p-2 border-t border-neutral-200 bg-neutral-50 flex-shrink-0">
               <div className="text-center">
                 <div className="text-xs font-medium text-neutral-900 mb-1">
