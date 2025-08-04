@@ -293,7 +293,7 @@ const POSInterface = () => {
         </div>
       </header>
 
-      <div className="flex flex-1 min-h-0 overflow-hidden">
+      <div className="flex flex-1 min-h-0 overflow-hidden relative">
         {/* Products Panel */}
         <div className="flex-1 flex flex-col p-2 sm:p-3 lg:p-4 min-w-0 max-w-full">
           {/* Search and Filters */}
@@ -447,7 +447,7 @@ const POSInterface = () => {
         <div className={`${
           isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'
         } ${
-          isCartCollapsed ? (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'w-0 opacity-0 pointer-events-none' : 'w-16') : ''
+          isCartCollapsed ? (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'fixed inset-y-0 right-0 w-full max-w-sm z-50 transform translate-x-full' : 'w-16') : (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'fixed inset-y-0 right-0 w-full max-w-sm z-50 transform translate-x-0' : '')
         } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-all duration-300 overflow-hidden`}>
 
           <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0">
@@ -610,6 +610,14 @@ const POSInterface = () => {
             </div>
           )}
         </div>
+
+        {/* Mobile overlay when cart is open */}
+        {!isCartCollapsed && typeof window !== 'undefined' && window.innerWidth <= 768 && (
+          <div 
+            className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+            onClick={() => setIsCartCollapsed(true)}
+          />
+        )}
       </div>
 
       {/* Payment Modal */}
