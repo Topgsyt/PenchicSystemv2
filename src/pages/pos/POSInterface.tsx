@@ -63,6 +63,27 @@ const POSInterface = () => {
     }
   }, [isFullscreen]);
 
+  // Add mobile auto-collapse functionality
+  useEffect(() => {
+    const handleResize = () => {
+      // Auto-collapse cart on mobile devices (768px and below)
+      if (window.innerWidth <= 768) {
+        setIsCartCollapsed(true);
+      } else {
+        setIsCartCollapsed(false);
+      }
+    };
+
+    // Set initial state
+    handleResize();
+    
+    // Add event listener
+    window.addEventListener('resize', handleResize);
+    
+    // Cleanup
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
+
   const initializeSession = async () => {
     try {
       const { data: existingSession, error: fetchError } = await supabase
@@ -404,12 +425,31 @@ const POSInterface = () => {
           </div>
         </div>
 
-        {/* Cart Panel */}
+        {/* Cart Panel - Enhanced Mobile Collapse */}
         <div className={`${
           isFullscreen ? 'w-80 lg:w-96' : 'w-full max-w-xs sm:max-w-sm lg:max-w-md'
         } ${
-          isCartCollapsed ? 'w-16' : ''
-        } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-all duration-300`}>
+          isCartCollapsed ? (typeof window !== 'undefined' && window.innerWidth <= 768 ? 'w-12' : 'w-16') : ''
+        } bg-white border-l border-neutral-200 flex flex-col shadow-xl flex-shrink-0 transition-all duration-300 relative`}>
+          
+          {/* Mobile collapsed cart trigger - only visible when collapsed on mobile */}
+          {isCartCollapsed && (
+            <div className="lg:hidden absolute left-0 top-1/2 transform -translate-y-1/2 -translate-x-full">
+              <button
+                onClick={() => setIsCartCollapsed(false)}
+                className="bg-primary text-white p-3 rounded-l-lg shadow-lg hover:bg-primary-dark transition-colors relative"
+                title="Open cart"
+              >
+                <ShoppingCart className="w-5 h-5" />
+                {cart.length > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {cart.reduce((sum, item) => sum + item.quantity, 0)}
+                  </span>
+                )}
+              </button>
+            </div>
+          )}
+
           <div className="p-3 sm:p-4 border-b border-neutral-200 flex-shrink-0">
             <div className="flex items-center justify-between mb-4 gap-2">
               {!isCartCollapsed && (
@@ -423,7 +463,10 @@ const POSInterface = () => {
                 {isCartCollapsed ? (
                   <ChevronRight className="w-5 h-5" />
                 ) : (
-                  <ChevronLeft className="w-5 h-5" />
+                  <>
+                    <ChevronLeft className="w-5 h-5 hidden lg:block" />
+                    <X className="w-5 h-5 lg:hidden" />
+                  </>
                 )}
               </button>
             </div>
