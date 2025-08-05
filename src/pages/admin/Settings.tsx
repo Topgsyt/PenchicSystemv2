@@ -19,6 +19,31 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface PerformanceSettings {
+  enable_animations: boolean;
+  lazy_loading: boolean;
+  cache_duration: number; // in minutes
+  batch_operations: boolean;
+  compress_images: boolean;
+  prefetch_data: boolean;
+  virtual_scrolling: boolean;
+  debounce_search: number; // in milliseconds
+}
+
+interface DataSettings {
+  items_per_page: number;
+  auto_save_interval: number; // in seconds
+  offline_mode: boolean;
+  sync_frequency: number; // in minutes
+  backup_retention: number; // in days
+}
+  email_notifications: boolean;
+  push_notifications: boolean;
+  low_stock_alerts: boolean;
+  order_notifications: boolean;
+  system_alerts: boolean;
+}
+
 interface NotificationSettings {
   email_notifications: boolean;
   push_notifications: boolean;
@@ -40,7 +65,7 @@ const Settings = () => {
   
   // State management
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('notifications');
+  const [activeTab, setActiveTab] = useState('performance');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmAction, setConfirmAction] = useState<() => void>(() => () => {});
   const [confirmMessage, setConfirmMessage] = useState('');
@@ -59,6 +84,25 @@ const Settings = () => {
     layout_spacing: 'comfortable',
     sidebar_collapsed: false,
     show_tooltips: true
+  });
+  
+  const [performanceSettings, setPerformanceSettings] = useState<PerformanceSettings>({
+    enable_animations: true,
+    lazy_loading: true,
+    cache_duration: 30,
+    batch_operations: true,
+    compress_images: true,
+    prefetch_data: false,
+    virtual_scrolling: true,
+    debounce_search: 300
+  });
+  
+  const [dataSettings, setDataSettings] = useState<DataSettings>({
+    items_per_page: 25,
+    auto_save_interval: 30,
+    offline_mode: false,
+    sync_frequency: 5,
+    backup_retention: 30
   });
   
   const [successMessage, setSuccessMessage] = useState('');
@@ -88,6 +132,18 @@ const Settings = () => {
         const parsed = JSON.parse(savedDisplay);
         setDisplaySettings(parsed);
       }
+
+      const savedPerformance = localStorage.getItem('performance_settings');
+      if (savedPerformance) {
+        const parsed = JSON.parse(savedPerformance);
+        setPerformanceSettings(parsed);
+      }
+
+      const savedData = localStorage.getItem('data_settings');
+      if (savedData) {
+        const parsed = JSON.parse(savedData);
+        setDataSettings(parsed);
+      }
     } catch (error) {
       console.error('Error loading from localStorage:', error);
       setErrorMessage('Failed to load settings');
@@ -106,6 +162,40 @@ const Settings = () => {
     } catch (error) {
       console.error('Error saving notification settings:', error);
       setErrorMessage('Failed to save notification settings');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
+  };
+
+  // Save performance settings
+  const savePerformanceSettings = () => {
+    try {
+      localStorage.setItem('performance_settings', JSON.stringify(performanceSettings));
+      
+      // Apply performance settings immediately
+      if (!performanceSettings.enable_animations) {
+        document.documentElement.style.setProperty('--animation-duration', '0s');
+      } else {
+        document.documentElement.style.removeProperty('--animation-duration');
+      }
+      
+      setSuccessMessage('Performance settings saved successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving performance settings:', error);
+      setErrorMessage('Failed to save performance settings');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
+  };
+
+  // Save data settings
+  const saveDataSettings = () => {
+    try {
+      localStorage.setItem('data_settings', JSON.stringify(dataSettings));
+      setSuccessMessage('Data settings saved successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving data settings:', error);
+      setErrorMessage('Failed to save data settings');
       setTimeout(() => setErrorMessage(''), 3000);
     }
   };
@@ -145,8 +235,10 @@ const Settings = () => {
   };
 
   const tabs = [
+    { id: 'performance', label: 'Performance', icon: Monitor },
+    { id: 'data', label: 'Data & Storage', icon: Database },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'display', label: 'Display', icon: Monitor },
+    { id: 'display', label: 'Display', icon: Layout },
     { id: 'system', label: 'System', icon: SettingsIcon }
   ];
 
@@ -215,6 +307,263 @@ const Settings = () => {
           </div>
 
           <div className="p-6">
+            {/* Performance Settings */}
+            {activeTab === 'performance' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-neutral-900">Performance Optimization</h3>
+                  <button
+                    onClick={savePerformanceSettings}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </button>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                    <div className="flex items-center gap-3">
+                      <Monitor className="w-5 h-5 text-neutral-500" />
+                      <div>
+                        <p className="font-medium text-neutral-900">Enable Animations</p>
+                        <p className="text-sm text-neutral-600">Smooth transitions and micro-interactions</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={performanceSettings.enable_animations}
+                        onChange={(e) => setPerformanceSettings({
+                          ...performanceSettings,
+                          enable_animations: e.target.checked
+                        })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                    <div className="flex items-center gap-3">
+                      <Database className="w-5 h-5 text-neutral-500" />
+                      <div>
+                        <p className="font-medium text-neutral-900">Lazy Loading</p>
+                        <p className="text-sm text-neutral-600">Load content only when needed</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={performanceSettings.lazy_loading}
+                        onChange={(e) => setPerformanceSettings({
+                          ...performanceSettings,
+                          lazy_loading: e.target.checked
+                        })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-neutral-500" />
+                      <div>
+                        <p className="font-medium text-neutral-900">Batch Operations</p>
+                        <p className="text-sm text-neutral-600">Group database operations for efficiency</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={performanceSettings.batch_operations}
+                        onChange={(e) => setPerformanceSettings({
+                          ...performanceSettings,
+                          batch_operations: e.target.checked
+                        })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                    <div className="flex items-center gap-3">
+                      <Type className="w-5 h-5 text-neutral-500" />
+                      <div>
+                        <p className="font-medium text-neutral-900">Virtual Scrolling</p>
+                        <p className="text-sm text-neutral-600">Optimize large lists and tables</p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={performanceSettings.virtual_scrolling}
+                        onChange={(e) => setPerformanceSettings({
+                          ...performanceSettings,
+                          virtual_scrolling: e.target.checked
+                        })}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Cache Duration (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        value={performanceSettings.cache_duration}
+                        onChange={(e) => setPerformanceSettings({
+                          ...performanceSettings,
+                          cache_duration: parseInt(e.target.value) || 0
+                        })}
+                        className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        min="1"
+                        max="1440"
+                      />
+                    </div>
+
+                    <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Search Debounce (ms)
+                      </label>
+                      <input
+                        type="number"
+                        value={performanceSettings.debounce_search}
+                        onChange={(e) => setPerformanceSettings({
+                          ...performanceSettings,
+                          debounce_search: parseInt(e.target.value) || 0
+                        })}
+                        className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        min="100"
+                        max="2000"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Data & Storage Settings */}
+            {activeTab === 'data' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-neutral-900">Data & Storage Management</h3>
+                  <button
+                    onClick={saveDataSettings}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Items Per Page
+                      </label>
+                      <select
+                        value={dataSettings.items_per_page}
+                        onChange={(e) => setDataSettings({
+                          ...dataSettings,
+                          items_per_page: parseInt(e.target.value)
+                        })}
+                        className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      >
+                        <option value={10}>10 items</option>
+                        <option value={25}>25 items</option>
+                        <option value={50}>50 items</option>
+                        <option value={100}>100 items</option>
+                      </select>
+                      <p className="text-xs text-neutral-500 mt-1">Fewer items = faster loading</p>
+                    </div>
+
+                    <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Auto-save Interval (seconds)
+                      </label>
+                      <input
+                        type="number"
+                        value={dataSettings.auto_save_interval}
+                        onChange={(e) => setDataSettings({
+                          ...dataSettings,
+                          auto_save_interval: parseInt(e.target.value) || 30
+                        })}
+                        className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        min="10"
+                        max="300"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Sync Frequency (minutes)
+                      </label>
+                      <input
+                        type="number"
+                        value={dataSettings.sync_frequency}
+                        onChange={(e) => setDataSettings({
+                          ...dataSettings,
+                          sync_frequency: parseInt(e.target.value) || 5
+                        })}
+                        className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        min="1"
+                        max="60"
+                      />
+                    </div>
+
+                    <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <label className="block text-sm font-medium text-neutral-700 mb-2">
+                        Backup Retention (days)
+                      </label>
+                      <input
+                        type="number"
+                        value={dataSettings.backup_retention}
+                        onChange={(e) => setDataSettings({
+                          ...dataSettings,
+                          backup_retention: parseInt(e.target.value) || 30
+                        })}
+                        className="w-full px-3 py-2 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        min="7"
+                        max="365"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                  <div className="flex items-center gap-3">
+                    <Wifi className="w-5 h-5 text-neutral-500" />
+                    <div>
+                      <p className="font-medium text-neutral-900">Offline Mode</p>
+                      <p className="text-sm text-neutral-600">Enable offline functionality and sync when online</p>
+                    </div>
+                  </div>
+                  <label className="relative inline-flex items-center cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={dataSettings.offline_mode}
+                      onChange={(e) => setDataSettings({
+                        ...dataSettings,
+                        offline_mode: e.target.checked
+                      })}
+                      className="sr-only peer"
+                    />
+                    <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                  </label>
+                </div>
+              </div>
+            )}
+
             {/* Notification Settings */}
             {activeTab === 'notifications' && (
               <div className="space-y-6">
