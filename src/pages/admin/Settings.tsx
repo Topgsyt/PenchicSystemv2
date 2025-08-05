@@ -75,6 +75,7 @@ const Settings = () => {
 
   // Load settings from localStorage
   const loadSettings = () => {
+    setLoading(true);
     try {
       const savedNotifications = localStorage.getItem('notification_settings');
       if (savedNotifications) {
@@ -91,6 +92,8 @@ const Settings = () => {
       console.error('Error loading from localStorage:', error);
       setErrorMessage('Failed to load settings');
       setTimeout(() => setErrorMessage(''), 3000);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -151,7 +154,7 @@ const Settings = () => {
     return (
       <AdminLayout title="Settings" subtitle="Configure system settings and preferences">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-600"></div>
         </div>
       </AdminLayout>
     );
