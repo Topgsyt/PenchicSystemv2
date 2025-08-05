@@ -4,356 +4,352 @@ import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { 
-  User, 
-  Shield, 
-  Bell, 
-  Palette, 
   Save, 
-  Eye, 
-  EyeOff,
-  Check,
+  Building, 
+  DollarSign, 
+  Percent, 
+  Bell, 
+  User, 
+  Mail, 
+  Phone, 
+  MapPin,
   AlertCircle,
+  CheckCircle,
+  X,
+  Edit3,
+  Plus,
+  Trash2,
   Settings as SettingsIcon,
   Monitor,
   Smartphone,
-  Download,
-  Upload,
-  Key,
-  Globe,
+  Type,
+  Layout,
+  Volume2,
+  Shield,
   Database,
-  Mail,
-  Lock,
-  Users,
-  BarChart3,
-  Zap,
-  Building,
-  Calculator,
-  Tag,
-  Receipt
+  Wifi,
+  HardDrive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+
+interface BusinessSettings {
+  id?: string;
+  name: string;
+  address: string;
+  phone: string;
+  email: string;
+  tax_id: string;
+  logo_url?: string;
+}
+
+interface TaxRate {
+  id?: string;
+  name: string;
+  rate: number;
+  is_default: boolean;
+}
+
+interface PaymentInfo {
+  id?: string;
+  paybill_number: string;
+  account_number: string;
+}
+
+interface NotificationSettings {
+  email_notifications: boolean;
+  push_notifications: boolean;
+  low_stock_alerts: boolean;
+  order_notifications: boolean;
+  system_alerts: boolean;
+}
+
+interface DisplaySettings {
+  font_size: 'small' | 'medium' | 'large';
+  layout_spacing: 'compact' | 'comfortable' | 'spacious';
+  sidebar_collapsed: boolean;
+  show_tooltips: boolean;
+}
 
 const Settings = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
-  const setUser = useStore((state) => state.setUser);
   
-  // Form states
-  const [profileData, setProfileData] = useState({
-    email: user?.email || '',
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: ''
-  });
-  
-  const [settings, setSettings] = useState({
-    // Business Settings
-    businessName: 'Penchic Farm',
-    businessAddress: 'Limuru, Kiambu County, Kenya',
-    businessPhone: '+254 722 395 370',
-    businessEmail: 'info@penchicfarm.com',
-    taxId: 'P051234567A',
-    
-    // Appearance Settings
-    fontSize: 'medium',
-    layoutSpacing: 'comfortable',
-    
-    // Tax Settings
-    vatRate: 16,
-    serviceTaxRate: 0,
-    
-    // Discount Settings
-    maxDiscountPercent: 50,
-    allowNegativeStock: false,
-    
-    // Notification Settings
-    lowStockAlert: true,
-    orderNotifications: true,
-    emailNotifications: true,
-    
-    // Receipt Settings
-    showLogo: true,
-    showBusinessInfo: true,
-    footerMessage: 'Thank you for your business!'
-  });
-  
-  const [systemSettings, setSystemSettings] = useState({
-    lowStockThreshold: 5,
-    autoBackup: true,
-    maintenanceMode: false,
-    maxLoginAttempts: 3,
-    sessionTimeout: 30,
-    enableAuditLog: true
-  });
-  
-  const [notificationSettings, setNotificationSettings] = useState({
-    emailNotifications: true,
-    stockAlerts: true,
-    orderNotifications: true,
-    systemUpdates: false,
-    marketingEmails: false,
-    smsNotifications: false,
-    pushNotifications: true,
-    notificationFrequency: 'immediate'
-  });
-
-  const [themeSettings, setThemeSettings] = useState({
-    theme: 'light',
-    colorScheme: 'blue',
-    sidebarCollapsed: false,
-    compactMode: false,
-    showAnimations: true,
-    fontSize: 'medium'
-  });
-
-  const [securitySettings, setSecuritySettings] = useState({
-    twoFactorEnabled: false,
-    passwordPolicy: 'medium',
-    loginNotifications: true,
-    deviceTracking: true,
-    ipWhitelist: '',
-    autoLockout: true
-  });
-
-  const [integrationSettings, setIntegrationSettings] = useState({
-    mpesaEnabled: true,
-    mpesaConsumerKey: '',
-    mpesaConsumerSecret: '',
-    emailProvider: 'smtp',
-    smtpHost: '',
-    smtpPort: 587,
-    smtpUsername: '',
-    smtpPassword: '',
-    backupProvider: 'local',
-    apiRateLimit: 1000
-  });
-
-  const [dataSettings, setDataSettings] = useState({
-    autoExport: false,
-    exportFormat: 'csv',
-    exportFrequency: 'weekly',
-    retentionPeriod: 365,
-    compressionEnabled: true,
-    encryptionEnabled: true
-  });
-  
-  // UI states
+  // State management
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('business');
-  const [showPassword, setShowPassword] = useState(false);
-  const [showNewPassword, setShowNewPassword] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+  const [confirmMessage, setConfirmMessage] = useState('');
+  
+  // Settings state
+  const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    tax_id: ''
+  });
+  
+  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
+  const [newTaxRate, setNewTaxRate] = useState<TaxRate>({
+    name: '',
+    rate: 0,
+    is_default: false
+  });
+  
+  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
+    paybill_number: '',
+    account_number: ''
+  });
+  
+  const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
+    email_notifications: true,
+    push_notifications: true,
+    low_stock_alerts: true,
+    order_notifications: true,
+    system_alerts: true
+  });
+  
+  const [displaySettings, setDisplaySettings] = useState<DisplaySettings>({
+    font_size: 'medium',
+    layout_spacing: 'comfortable',
+    sidebar_collapsed: false,
+    show_tooltips: true
+  });
+  
+  const [successMessage, setSuccessMessage] = useState('');
+  const [errorMessage, setErrorMessage] = useState('');
 
+  // Check admin access
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       navigate('/');
+      return;
     }
-    loadSettings();
+    fetchSettings();
   }, [user, navigate]);
 
-  const loadSettings = async () => {
+  // Fetch all settings
+  const fetchSettings = async () => {
+    setLoading(true);
     try {
-      // Load system settings from database or localStorage
-      const savedSettings = localStorage.getItem('systemSettings');
-      if (savedSettings) {
-        setSystemSettings(JSON.parse(savedSettings));
+      // Fetch business settings
+      const { data: businessData, error: businessError } = await supabase
+        .from('business_settings')
+        .select('*')
+        .single();
+
+      if (businessError && businessError.code !== 'PGRST116') {
+        throw businessError;
       }
-      
-      const savedNotifications = localStorage.getItem('notificationSettings');
+
+      if (businessData) {
+        setBusinessSettings(businessData);
+      }
+
+      // Fetch tax rates
+      const { data: taxData, error: taxError } = await supabase
+        .from('tax_rates')
+        .select('*')
+        .order('name');
+
+      if (taxError) throw taxError;
+      setTaxRates(taxData || []);
+
+      // Fetch payment info
+      const { data: paymentData, error: paymentError } = await supabase
+        .from('payment_info')
+        .select('*')
+        .single();
+
+      if (paymentError && paymentError.code !== 'PGRST116') {
+        throw paymentError;
+      }
+
+      if (paymentData) {
+        setPaymentInfo(paymentData);
+      }
+
+      // Load notification and display settings from localStorage
+      const savedNotifications = localStorage.getItem('notification_settings');
       if (savedNotifications) {
         setNotificationSettings(JSON.parse(savedNotifications));
       }
 
-      const savedTheme = localStorage.getItem('themeSettings');
-      if (savedTheme) {
-        setThemeSettings(JSON.parse(savedTheme));
+      const savedDisplay = localStorage.getItem('display_settings');
+      if (savedDisplay) {
+        setDisplaySettings(JSON.parse(savedDisplay));
       }
 
-      const savedSecurity = localStorage.getItem('securitySettings');
-      if (savedSecurity) {
-        setSecuritySettings(JSON.parse(savedSecurity));
-      }
-
-      const savedIntegration = localStorage.getItem('integrationSettings');
-      if (savedIntegration) {
-        setIntegrationSettings(JSON.parse(savedIntegration));
-      }
-
-      const savedData = localStorage.getItem('dataSettings');
-      if (savedData) {
-        setDataSettings(JSON.parse(savedData));
-      }
     } catch (error) {
-      console.error('Error loading settings:', error);
-    }
-  };
-
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text });
-    setTimeout(() => setMessage({ type: '', text: '' }), 5000);
-  };
-
-  const handleSettingChange = (key: string, value: any) => {
-    setSettings(prev => ({ ...prev, [key]: value }));
-  };
-
-  // Apply settings to CSS variables
-  useEffect(() => {
-    const root = document.documentElement;
-    
-    // Font size
-    const fontSizes = {
-      small: '14px',
-      medium: '16px',
-      large: '18px'
-    };
-    root.style.setProperty('--font-size-base', fontSizes[settings.fontSize as keyof typeof fontSizes]);
-    
-    // Layout spacing
-    const spacings = {
-      compact: '0.5rem',
-      comfortable: '1rem',
-      spacious: '1.5rem'
-    };
-    root.style.setProperty('--layout-spacing', spacings[settings.layoutSpacing as keyof typeof spacings]);
-  }, [settings]);
-
-  const handleProfileUpdate = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-
-    try {
-      // Update email if changed
-      if (profileData.email !== user?.email) {
-        const { error: emailError } = await supabase.auth.updateUser({
-          email: profileData.email
-        });
-        if (emailError) throw emailError;
-
-        // Update profile in database
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ email: profileData.email })
-          .eq('id', user?.id);
-        
-        if (profileError) throw profileError;
-
-        setUser({ ...user!, email: profileData.email });
-      }
-
-      // Update password if provided
-      if (profileData.newPassword) {
-        if (profileData.newPassword !== profileData.confirmPassword) {
-          throw new Error('New passwords do not match');
-        }
-        if (profileData.newPassword.length < 6) {
-          throw new Error('Password must be at least 6 characters long');
-        }
-
-        const { error: passwordError } = await supabase.auth.updateUser({
-          password: profileData.newPassword
-        });
-        if (passwordError) throw passwordError;
-
-        // Clear password fields
-        setProfileData(prev => ({
-          ...prev,
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: ''
-        }));
-      }
-
-      showMessage('success', 'Profile updated successfully!');
-    } catch (error: any) {
-      showMessage('error', error.message || 'Failed to update profile');
+      console.error('Error fetching settings:', error);
+      setErrorMessage('Failed to load settings');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSettingsUpdate = async (settingsType: string, settings: any) => {
-    setLoading(true);
+  // Save business settings
+  const saveBusinessSettings = async () => {
+    setSaving(true);
     try {
-      localStorage.setItem(settingsType, JSON.stringify(settings));
-      showMessage('success', 'Settings updated successfully!');
-    } catch (error: any) {
-      showMessage('error', 'Failed to update settings');
+      const { error } = await supabase
+        .from('business_settings')
+        .upsert(businessSettings);
+
+      if (error) throw error;
+      
+      setSuccessMessage('Business settings saved successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving business settings:', error);
+      setErrorMessage('Failed to save business settings');
+      setTimeout(() => setErrorMessage(''), 3000);
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const handleExportData = async () => {
+  // Save tax rates
+  const saveTaxRate = async (taxRate: TaxRate) => {
     try {
-      // Export data logic here
-      const data = {
-        products: await supabase.from('products').select('*'),
-        orders: await supabase.from('orders').select('*'),
-        users: await supabase.from('profiles').select('*')
-      };
+      if (taxRate.is_default) {
+        // Remove default from other rates
+        await supabase
+          .from('tax_rates')
+          .update({ is_default: false })
+          .neq('id', taxRate.id || '');
+      }
+
+      const { error } = await supabase
+        .from('tax_rates')
+        .upsert(taxRate);
+
+      if (error) throw error;
       
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `penchic-farm-data-${new Date().toISOString().split('T')[0]}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      
-      showMessage('success', 'Data exported successfully!');
+      fetchSettings();
+      setSuccessMessage('Tax rate saved successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
-      showMessage('error', 'Failed to export data');
+      console.error('Error saving tax rate:', error);
+      setErrorMessage('Failed to save tax rate');
+      setTimeout(() => setErrorMessage(''), 3000);
     }
+  };
+
+  // Delete tax rate
+  const deleteTaxRate = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('tax_rates')
+        .delete()
+        .eq('id', id);
+
+      if (error) throw error;
+      
+      fetchSettings();
+      setSuccessMessage('Tax rate deleted successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error deleting tax rate:', error);
+      setErrorMessage('Failed to delete tax rate');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
+  };
+
+  // Save payment info
+  const savePaymentInfo = async () => {
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('payment_info')
+        .upsert(paymentInfo);
+
+      if (error) throw error;
+      
+      setSuccessMessage('Payment information saved successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving payment info:', error);
+      setErrorMessage('Failed to save payment information');
+      setTimeout(() => setErrorMessage(''), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Save notification settings
+  const saveNotificationSettings = () => {
+    localStorage.setItem('notification_settings', JSON.stringify(notificationSettings));
+    setSuccessMessage('Notification settings saved successfully');
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  // Save display settings
+  const saveDisplaySettings = () => {
+    localStorage.setItem('display_settings', JSON.stringify(displaySettings));
+    // Apply settings immediately
+    document.documentElement.style.fontSize = 
+      displaySettings.font_size === 'small' ? '14px' : 
+      displaySettings.font_size === 'large' ? '18px' : '16px';
+    
+    setSuccessMessage('Display settings saved successfully');
+    setTimeout(() => setSuccessMessage(''), 3000);
+  };
+
+  // Confirmation dialog
+  const showConfirmation = (message: string, action: () => void) => {
+    setConfirmMessage(message);
+    setConfirmAction(() => action);
+    setShowConfirmDialog(true);
   };
 
   const tabs = [
     { id: 'business', label: 'Business Info', icon: Building },
-    { id: 'appearance', label: 'Appearance', icon: Palette },
-    { id: 'tax', label: 'Tax Rates', icon: Calculator },
-    { id: 'discounts', label: 'Discounts', icon: Tag },
+    { id: 'tax', label: 'Tax & Pricing', icon: DollarSign },
+    { id: 'payment', label: 'Payment', icon: Percent },
     { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'receipt', label: 'Receipt', icon: Receipt },
-    { id: 'profile', label: 'Profile', icon: User },
-    { id: 'theme', label: 'Theme', icon: Palette },
-    { id: 'security', label: 'Security', icon: Shield },
-    { id: 'system', label: 'System', icon: SettingsIcon },
-    { id: 'integrations', label: 'Integrations', icon: Zap },
-    { id: 'data', label: 'Data', icon: Database }
+    { id: 'display', label: 'Display', icon: Monitor },
+    { id: 'system', label: 'System', icon: SettingsIcon }
   ];
 
-  const colorSchemes = [
-    { id: 'blue', name: 'Blue', color: '#3B82F6' },
-    { id: 'green', name: 'Green', color: '#10B981' },
-    { id: 'purple', name: 'Purple', color: '#8B5CF6' },
-    { id: 'red', name: 'Red', color: '#EF4444' },
-    { id: 'orange', name: 'Orange', color: '#F59E0B' }
-  ];
+  if (loading) {
+    return (
+      <AdminLayout title="Settings" subtitle="Configure system settings and preferences">
+        <div className="flex items-center justify-center h-64">
+          <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
-    <AdminLayout title="Settings" subtitle="Manage your account and system preferences">
+    <AdminLayout title="Settings" subtitle="Configure system settings and preferences">
       <div className="space-y-6">
         {/* Success/Error Messages */}
         <AnimatePresence>
-          {message.text && (
+          {successMessage && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className={`p-4 rounded-xl border flex items-center gap-3 ${
-                message.type === 'success' 
-                  ? 'bg-green-50 text-green-800 border-green-200' 
-                  : 'bg-red-50 text-red-800 border-red-200'
-              }`}
+              className="flex items-center gap-2 p-4 bg-green-50 text-green-800 rounded-lg border border-green-200"
             >
-              {message.type === 'success' ? (
-                <Check className="w-5 h-5" />
-              ) : (
-                <AlertCircle className="w-5 h-5" />
-              )}
-              {message.text}
+              <CheckCircle className="w-5 h-5" />
+              {successMessage}
+            </motion.div>
+          )}
+          
+          {errorMessage && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center gap-2 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200"
+            >
+              <AlertCircle className="w-5 h-5" />
+              {errorMessage}
             </motion.div>
           )}
         </AnimatePresence>
@@ -385,50 +381,31 @@ const Settings = () => {
           <div className="p-6">
             {/* Business Settings */}
             {activeTab === 'business' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Business Information</h3>
-                  <p className="text-neutral-600">Update your business details and contact information</p>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-neutral-900">Business Information</h3>
+                  <button
+                    onClick={() => showConfirmation('Save business settings?', saveBusinessSettings)}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Business Name
+                      Business Name *
                     </label>
                     <input
                       type="text"
-                      value={settings.businessName}
-                      onChange={(e) => handleSettingChange('businessName', e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Business Email
-                    </label>
-                    <input
-                      type="email"
-                      value={settings.businessEmail}
-                      onChange={(e) => handleSettingChange('businessEmail', e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Business Phone
-                    </label>
-                    <input
-                      type="tel"
-                      value={settings.businessPhone}
-                      onChange={(e) => handleSettingChange('businessPhone', e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      value={businessSettings.name}
+                      onChange={(e) => setBusinessSettings({...businessSettings, name: e.target.value})}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="Enter business name"
+                      required
                     />
                   </div>
 
@@ -438,832 +415,466 @@ const Settings = () => {
                     </label>
                     <input
                       type="text"
-                      value={settings.taxId}
-                      onChange={(e) => handleSettingChange('taxId', e.target.value)}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      value={businessSettings.tax_id}
+                      onChange={(e) => setBusinessSettings({...businessSettings, tax_id: e.target.value})}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="Enter tax ID"
+                    />
+                  </div>
+
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      <MapPin className="w-4 h-4 inline mr-1" />
+                      Address *
+                    </label>
+                    <textarea
+                      value={businessSettings.address}
+                      onChange={(e) => setBusinessSettings({...businessSettings, address: e.target.value})}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      rows={3}
+                      placeholder="Enter business address"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      <Phone className="w-4 h-4 inline mr-1" />
+                      Phone Number *
+                    </label>
+                    <input
+                      type="tel"
+                      value={businessSettings.phone}
+                      onChange={(e) => setBusinessSettings({...businessSettings, phone: e.target.value})}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="+254 XXX XXX XXX"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      <Mail className="w-4 h-4 inline mr-1" />
+                      Email Address *
+                    </label>
+                    <input
+                      type="email"
+                      value={businessSettings.email}
+                      onChange={(e) => setBusinessSettings({...businessSettings, email: e.target.value})}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="business@example.com"
+                      required
                     />
                   </div>
                 </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                    Business Address
-                  </label>
-                  <textarea
-                    value={settings.businessAddress}
-                    onChange={(e) => handleSettingChange('businessAddress', e.target.value)}
-                    rows={3}
-                    className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                  />
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => handleSettingsUpdate('businessSettings', settings)}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Save className="w-4 h-4" />
-                    {loading ? 'Saving...' : 'Save Business Info'}
-                  </button>
-                </div>
-              </motion.div>
+              </div>
             )}
 
-            {/* Appearance Settings */}
-            {activeTab === 'appearance' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Appearance Settings</h3>
-                  <p className="text-neutral-600">Customize the look and feel of your admin panel</p>
+            {/* Tax & Pricing Settings */}
+            {activeTab === 'tax' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-neutral-900">Tax Rates & Pricing</h3>
                 </div>
 
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Font Size
-                      </label>
-                      <select
-                        value={settings.fontSize}
-                        onChange={(e) => handleSettingChange('fontSize', e.target.value)}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                      >
-                        <option value="small">Small</option>
-                        <option value="medium">Medium</option>
-                        <option value="large">Large</option>
-                      </select>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Layout Spacing
-                      </label>
-                      <select
-                        value={settings.layoutSpacing}
-                        onChange={(e) => handleSettingChange('layoutSpacing', e.target.value)}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                      >
-                        <option value="compact">Compact</option>
-                        <option value="comfortable">Comfortable</option>
-                        <option value="spacious">Spacious</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div className="bg-neutral-50 rounded-xl p-6 border border-neutral-200">
-                    <h3 className="text-lg font-semibold text-neutral-900 mb-4">Preview</h3>
-                    <div className="space-y-4">
-                      <div className="bg-white p-4 rounded-lg border border-neutral-200">
-                        <h4 className="font-medium text-neutral-900 mb-2">Sample Dashboard Card</h4>
-                        <p className="text-neutral-600 text-sm">
-                          This preview shows how your settings will appear across the admin panel.
-                          Font size and spacing adjustments are applied in real-time.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex justify-end">
-                  <button
-                    onClick={() => handleSettingsUpdate('appearanceSettings', settings)}
-                    disabled={loading}
-                    className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Save className="w-4 h-4" />
-                    {loading ? 'Saving...' : 'Save Appearance Settings'}
-                  </button>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Profile Settings */}
-            {activeTab === 'profile' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Profile Information</h3>
-                  <p className="text-neutral-600">Update your account details and password</p>
-                </div>
-
-                <form onSubmit={handleProfileUpdate} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Email Address
-                      </label>
-                      <input
-                        type="email"
-                        value={profileData.email}
-                        onChange={(e) => setProfileData(prev => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        required
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Role
-                      </label>
-                      <input
-                        type="text"
-                        value={user?.role || 'admin'}
-                        disabled
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl bg-neutral-50 text-neutral-500"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="border-t border-neutral-200 pt-6">
-                    <h4 className="text-md font-medium text-neutral-900 mb-4">Change Password</h4>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          Current Password
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showPassword ? 'text' : 'password'}
-                            value={profileData.currentPassword}
-                            onChange={(e) => setProfileData(prev => ({ ...prev, currentPassword: e.target.value }))}
-                            className="w-full px-4 py-3 pr-12 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                          >
-                            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
+                {/* Existing Tax Rates */}
+                <div className="space-y-4">
+                  <h4 className="font-medium text-neutral-900">Current Tax Rates</h4>
+                  {taxRates.map((rate) => (
+                    <div key={rate.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-4">
+                        <div>
+                          <p className="font-medium text-neutral-900">{rate.name}</p>
+                          <p className="text-sm text-neutral-600">{rate.rate}%</p>
                         </div>
+                        {rate.is_default && (
+                          <span className="px-2 py-1 bg-primary text-white text-xs rounded-full">Default</span>
+                        )}
                       </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          New Password
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showNewPassword ? 'text' : 'password'}
-                            value={profileData.newPassword}
-                            onChange={(e) => setProfileData(prev => ({ ...prev, newPassword: e.target.value }))}
-                            className="w-full px-4 py-3 pr-12 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-neutral-600"
-                          >
-                            {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          Confirm New Password
-                        </label>
-                        <input
-                          type="password"
-                          value={profileData.confirmPassword}
-                          onChange={(e) => setProfileData(prev => ({ ...prev, confirmPassword: e.target.value }))}
-                          className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      type="submit"
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : 'Save Changes'}
-                    </button>
-                  </div>
-                </form>
-              </motion.div>
-            )}
-
-            {/* Theme Settings */}
-            {activeTab === 'theme' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Theme & Appearance</h3>
-                  <p className="text-neutral-600">Customize the look and feel of your dashboard</p>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Theme Mode */}
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-3">Theme Mode</label>
-                    <div className="grid grid-cols-3 gap-3">
-                      {[
-                        { id: 'light', name: 'Light', icon: Monitor },
-                        { id: 'dark', name: 'Dark', icon: Monitor },
-                        { id: 'auto', name: 'Auto', icon: Smartphone }
-                      ].map((theme) => {
-                        const Icon = theme.icon;
-                        return (
-                          <button
-                            key={theme.id}
-                            onClick={() => setThemeSettings(prev => ({ ...prev, theme: theme.id }))}
-                            className={`p-4 border-2 rounded-xl transition-colors ${
-                              themeSettings.theme === theme.id
-                                ? 'border-primary bg-primary/5'
-                                : 'border-neutral-200 hover:border-neutral-300'
-                            }`}
-                          >
-                            <Icon className="w-6 h-6 mx-auto mb-2 text-neutral-600" />
-                            <p className="text-sm font-medium">{theme.name}</p>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  {/* Color Scheme */}
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-3">Color Scheme</label>
-                    <div className="flex gap-3">
-                      {colorSchemes.map((scheme) => (
+                      <div className="flex items-center gap-2">
                         <button
-                          key={scheme.id}
-                          onClick={() => setThemeSettings(prev => ({ ...prev, colorScheme: scheme.id }))}
-                          className={`w-12 h-12 rounded-xl border-2 transition-all ${
-                            themeSettings.colorScheme === scheme.id
-                              ? 'border-neutral-400 scale-110'
-                              : 'border-neutral-200 hover:scale-105'
-                          }`}
-                          style={{ backgroundColor: scheme.color }}
-                          title={scheme.name}
-                        />
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Layout Options */}
-                  <div className="space-y-4">
-                    <h4 className="text-md font-medium text-neutral-900">Layout Options</h4>
-                    
-                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
-                      <div>
-                        <h5 className="font-medium text-neutral-900">Compact Mode</h5>
-                        <p className="text-sm text-neutral-600">Reduce spacing and padding</p>
+                          onClick={() => showConfirmation(`Delete tax rate "${rate.name}"?`, () => deleteTaxRate(rate.id!))}
+                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                    </div>
+                  ))}
+                </div>
+
+                {/* Add New Tax Rate */}
+                <div className="border-t border-neutral-200 pt-6">
+                  <h4 className="font-medium text-neutral-900 mb-4">Add New Tax Rate</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <input
+                      type="text"
+                      value={newTaxRate.name}
+                      onChange={(e) => setNewTaxRate({...newTaxRate, name: e.target.value})}
+                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="Tax name (e.g., VAT)"
+                    />
+                    <input
+                      type="number"
+                      value={newTaxRate.rate}
+                      onChange={(e) => setNewTaxRate({...newTaxRate, rate: parseFloat(e.target.value) || 0})}
+                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="Rate (%)"
+                      min="0"
+                      max="100"
+                      step="0.01"
+                    />
+                    <div className="flex items-center gap-4">
+                      <label className="flex items-center gap-2">
                         <input
                           type="checkbox"
-                          checked={themeSettings.compactMode}
-                          onChange={(e) => setThemeSettings(prev => ({ ...prev, compactMode: e.target.checked }))}
-                          className="sr-only peer"
+                          checked={newTaxRate.is_default}
+                          onChange={(e) => setNewTaxRate({...newTaxRate, is_default: e.target.checked})}
+                          className="rounded border-neutral-300 text-primary focus:ring-primary/20"
                         />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        <span className="text-sm text-neutral-700">Default</span>
                       </label>
+                      <button
+                        onClick={() => {
+                          if (newTaxRate.name && newTaxRate.rate > 0) {
+                            saveTaxRate(newTaxRate);
+                            setNewTaxRate({ name: '', rate: 0, is_default: false });
+                          }
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add
+                      </button>
                     </div>
-
-                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
-                      <div>
-                        <h5 className="font-medium text-neutral-900">Show Animations</h5>
-                        <p className="text-sm text-neutral-600">Enable smooth transitions and animations</p>
-                      </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={themeSettings.showAnimations}
-                          onChange={(e) => setThemeSettings(prev => ({ ...prev, showAnimations: e.target.checked }))}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                      </label>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleSettingsUpdate('themeSettings', themeSettings)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : 'Save Theme Settings'}
-                    </button>
                   </div>
                 </div>
-              </motion.div>
+              </div>
+            )}
+
+            {/* Payment Settings */}
+            {activeTab === 'payment' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-neutral-900">Payment Configuration</h3>
+                  <button
+                    onClick={() => showConfirmation('Save payment settings?', savePaymentInfo)}
+                    disabled={saving}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                  >
+                    <Save className="w-4 h-4" />
+                    {saving ? 'Saving...' : 'Save Changes'}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      M-Pesa Paybill Number
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentInfo.paybill_number}
+                      onChange={(e) => setPaymentInfo({...paymentInfo, paybill_number: e.target.value})}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="Enter paybill number"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Account Number
+                    </label>
+                    <input
+                      type="text"
+                      value={paymentInfo.account_number}
+                      onChange={(e) => setPaymentInfo({...paymentInfo, account_number: e.target.value})}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      placeholder="Enter account number"
+                    />
+                  </div>
+                </div>
+              </div>
             )}
 
             {/* Notification Settings */}
             {activeTab === 'notifications' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Notification Preferences</h3>
-                  <p className="text-neutral-600">Choose what notifications you want to receive and how</p>
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-neutral-900">Notification Preferences</h3>
+                  <button
+                    onClick={saveNotificationSettings}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </button>
                 </div>
 
-                <div className="space-y-6">
-                  {/* Notification Types */}
-                  <div className="space-y-4">
-                    <h4 className="text-md font-medium text-neutral-900">Notification Types</h4>
-                    
-                    {[
-                      { key: 'emailNotifications', label: 'Email Notifications', desc: 'Receive notifications via email' },
-                      { key: 'stockAlerts', label: 'Stock Alerts', desc: 'Get notified when stock is low' },
-                      { key: 'orderNotifications', label: 'Order Notifications', desc: 'Get notified about new orders' },
-                      { key: 'systemUpdates', label: 'System Updates', desc: 'Get notified about system updates' },
-                      { key: 'marketingEmails', label: 'Marketing Emails', desc: 'Receive promotional content' },
-                      { key: 'smsNotifications', label: 'SMS Notifications', desc: 'Receive notifications via SMS' },
-                      { key: 'pushNotifications', label: 'Push Notifications', desc: 'Browser push notifications' }
-                    ].map((notification) => (
-                      <div key={notification.key} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
+                <div className="space-y-4">
+                  {Object.entries(notificationSettings).map(([key, value]) => (
+                    <div key={key} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <Bell className="w-5 h-5 text-neutral-500" />
                         <div>
-                          <h5 className="font-medium text-neutral-900">{notification.label}</h5>
-                          <p className="text-sm text-neutral-600">{notification.desc}</p>
+                          <p className="font-medium text-neutral-900">
+                            {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                          </p>
+                          <p className="text-sm text-neutral-600">
+                            {key === 'email_notifications' && 'Receive notifications via email'}
+                            {key === 'push_notifications' && 'Receive browser push notifications'}
+                            {key === 'low_stock_alerts' && 'Get alerts when products are low in stock'}
+                            {key === 'order_notifications' && 'Receive notifications for new orders'}
+                            {key === 'system_alerts' && 'Get system maintenance and error alerts'}
+                          </p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={notificationSettings[notification.key as keyof typeof notificationSettings] as boolean}
-                            onChange={(e) => setNotificationSettings(prev => ({ 
-                              ...prev, 
-                              [notification.key]: e.target.checked 
-                            }))}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Notification Frequency */}
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-3">Notification Frequency</label>
-                    <select
-                      value={notificationSettings.notificationFrequency}
-                      onChange={(e) => setNotificationSettings(prev => ({ ...prev, notificationFrequency: e.target.value }))}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    >
-                      <option value="immediate">Immediate</option>
-                      <option value="hourly">Hourly Digest</option>
-                      <option value="daily">Daily Digest</option>
-                      <option value="weekly">Weekly Digest</option>
-                    </select>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleSettingsUpdate('notificationSettings', notificationSettings)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : 'Save Notification Settings'}
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Security Settings */}
-            {activeTab === 'security' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Security Settings</h3>
-                  <p className="text-neutral-600">Manage your account security and access controls</p>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Two-Factor Authentication */}
-                  <div className="p-6 bg-neutral-50 rounded-xl border border-neutral-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <div>
-                        <h4 className="font-medium text-neutral-900 mb-2">Two-Factor Authentication</h4>
-                        <p className="text-sm text-neutral-600">Add an extra layer of security to your account</p>
                       </div>
                       <label className="relative inline-flex items-center cursor-pointer">
                         <input
                           type="checkbox"
-                          checked={securitySettings.twoFactorEnabled}
-                          onChange={(e) => setSecuritySettings(prev => ({ ...prev, twoFactorEnabled: e.target.checked }))}
+                          checked={value}
+                          onChange={(e) => setNotificationSettings({
+                            ...notificationSettings,
+                            [key]: e.target.checked
+                          })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
                       </label>
                     </div>
-                    {securitySettings.twoFactorEnabled && (
-                      <button className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors">
-                        Configure 2FA
-                      </button>
-                    )}
-                  </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
-                  {/* Password Policy */}
+            {/* Display Settings */}
+            {activeTab === 'display' && (
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold text-neutral-900">Display Preferences</h3>
+                  <button
+                    onClick={saveDisplaySettings}
+                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    <Save className="w-4 h-4" />
+                    Save Changes
+                  </button>
+                </div>
+
+                <div className="space-y-6">
+                  {/* Font Size */}
                   <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-3">Password Policy</label>
-                    <select
-                      value={securitySettings.passwordPolicy}
-                      onChange={(e) => setSecuritySettings(prev => ({ ...prev, passwordPolicy: e.target.value }))}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                    >
-                      <option value="weak">Weak (6+ characters)</option>
-                      <option value="medium">Medium (8+ characters, mixed case)</option>
-                      <option value="strong">Strong (12+ characters, mixed case, numbers, symbols)</option>
-                    </select>
+                    <label className="block text-sm font-medium text-neutral-700 mb-3">
+                      <Type className="w-4 h-4 inline mr-1" />
+                      Font Size
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {['small', 'medium', 'large'].map((size) => (
+                        <button
+                          key={size}
+                          onClick={() => setDisplaySettings({...displaySettings, font_size: size as any})}
+                          className={`p-3 text-center rounded-lg border transition-colors ${
+                            displaySettings.font_size === size
+                              ? 'border-primary bg-primary/5 text-primary'
+                              : 'border-neutral-200 hover:border-neutral-300'
+                          }`}
+                        >
+                          <span className={`font-medium ${
+                            size === 'small' ? 'text-sm' : 
+                            size === 'large' ? 'text-lg' : 'text-base'
+                          }`}>
+                            {size.charAt(0).toUpperCase() + size.slice(1)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
                   </div>
 
-                  {/* Security Options */}
+                  {/* Layout Spacing */}
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-3">
+                      <Layout className="w-4 h-4 inline mr-1" />
+                      Layout Spacing
+                    </label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {['compact', 'comfortable', 'spacious'].map((spacing) => (
+                        <button
+                          key={spacing}
+                          onClick={() => setDisplaySettings({...displaySettings, layout_spacing: spacing as any})}
+                          className={`p-3 text-center rounded-lg border transition-colors ${
+                            displaySettings.layout_spacing === spacing
+                              ? 'border-primary bg-primary/5 text-primary'
+                              : 'border-neutral-200 hover:border-neutral-300'
+                          }`}
+                        >
+                          <span className="font-medium">
+                            {spacing.charAt(0).toUpperCase() + spacing.slice(1)}
+                          </span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Other Display Options */}
                   <div className="space-y-4">
-                    {[
-                      { key: 'loginNotifications', label: 'Login Notifications', desc: 'Get notified of new login attempts' },
-                      { key: 'deviceTracking', label: 'Device Tracking', desc: 'Track and manage logged-in devices' },
-                      { key: 'autoLockout', label: 'Auto Lockout', desc: 'Automatically lock account after failed attempts' }
-                    ].map((setting) => (
-                      <div key={setting.key} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
+                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <Layout className="w-5 h-5 text-neutral-500" />
                         <div>
-                          <h5 className="font-medium text-neutral-900">{setting.label}</h5>
-                          <p className="text-sm text-neutral-600">{setting.desc}</p>
+                          <p className="font-medium text-neutral-900">Collapse Sidebar by Default</p>
+                          <p className="text-sm text-neutral-600">Start with a collapsed sidebar for more space</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={securitySettings[setting.key as keyof typeof securitySettings] as boolean}
-                            onChange={(e) => setSecuritySettings(prev => ({ 
-                              ...prev, 
-                              [setting.key]: e.target.checked 
-                            }))}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                        </label>
                       </div>
-                    ))}
-                  </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={displaySettings.sidebar_collapsed}
+                          onChange={(e) => setDisplaySettings({
+                            ...displaySettings,
+                            sidebar_collapsed: e.target.checked
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
 
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleSettingsUpdate('securitySettings', securitySettings)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : 'Save Security Settings'}
-                    </button>
+                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <Volume2 className="w-5 h-5 text-neutral-500" />
+                        <div>
+                          <p className="font-medium text-neutral-900">Show Tooltips</p>
+                          <p className="text-sm text-neutral-600">Display helpful tooltips on hover</p>
+                        </div>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={displaySettings.show_tooltips}
+                          onChange={(e) => setDisplaySettings({
+                            ...displaySettings,
+                            show_tooltips: e.target.checked
+                          })}
+                          className="sr-only peer"
+                        />
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
                   </div>
                 </div>
-              </motion.div>
+              </div>
             )}
 
             {/* System Settings */}
             {activeTab === 'system' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">System Configuration</h3>
-                  <p className="text-neutral-600">Configure system-wide settings and preferences</p>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Low Stock Threshold
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="100"
-                        value={systemSettings.lowStockThreshold}
-                        onChange={(e) => setSystemSettings(prev => ({ ...prev, lowStockThreshold: parseInt(e.target.value) }))}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                      />
-                      <p className="text-xs text-neutral-500 mt-1">Alert when stock falls below this number</p>
+              <div className="space-y-6">
+                <h3 className="text-lg font-semibold text-neutral-900">System Information</h3>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <Database className="w-5 h-5 text-neutral-500" />
+                        <div>
+                          <p className="font-medium text-neutral-900">Database Status</p>
+                          <p className="text-sm text-neutral-600">Connection status</p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                        Connected
+                      </span>
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Session Timeout (minutes)
-                      </label>
-                      <input
-                        type="number"
-                        min="5"
-                        max="480"
-                        value={systemSettings.sessionTimeout}
-                        onChange={(e) => setSystemSettings(prev => ({ ...prev, sessionTimeout: parseInt(e.target.value) }))}
-                        className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                      />
-                      <p className="text-xs text-neutral-500 mt-1">Automatically log out inactive users</p>
+                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <Wifi className="w-5 h-5 text-neutral-500" />
+                        <div>
+                          <p className="font-medium text-neutral-900">Real-time Updates</p>
+                          <p className="text-sm text-neutral-600">Live data synchronization</p>
+                        </div>
+                      </div>
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                        Active
+                      </span>
                     </div>
                   </div>
 
                   <div className="space-y-4">
-                    {[
-                      { key: 'autoBackup', label: 'Auto Backup', desc: 'Automatically backup data daily' },
-                      { key: 'maintenanceMode', label: 'Maintenance Mode', desc: 'Temporarily disable public access' },
-                      { key: 'enableAuditLog', label: 'Audit Logging', desc: 'Log all admin actions for security' }
-                    ].map((setting) => (
-                      <div key={setting.key} className="flex items-center justify-between p-4 bg-neutral-50 rounded-xl">
+                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <HardDrive className="w-5 h-5 text-neutral-500" />
                         <div>
-                          <h4 className="font-medium text-neutral-900">{setting.label}</h4>
-                          <p className="text-sm text-neutral-600">{setting.desc}</p>
+                          <p className="font-medium text-neutral-900">Storage Usage</p>
+                          <p className="text-sm text-neutral-600">Database storage</p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={systemSettings[setting.key as keyof typeof systemSettings] as boolean}
-                            onChange={(e) => setSystemSettings(prev => ({ 
-                              ...prev, 
-                              [setting.key]: e.target.checked 
-                            }))}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                        </label>
                       </div>
-                    ))}
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleSettingsUpdate('systemSettings', systemSettings)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : 'Save System Settings'}
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
-            )}
-
-            {/* Integration Settings */}
-            {activeTab === 'integrations' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Third-Party Integrations</h3>
-                  <p className="text-neutral-600">Configure external services and API connections</p>
-                </div>
-
-                <div className="space-y-6">
-                  {/* M-Pesa Integration */}
-                  <div className="p-6 bg-neutral-50 rounded-xl border border-neutral-200">
-                    <div className="flex items-center justify-between mb-4">
-                      <h4 className="font-medium text-neutral-900">M-Pesa Integration</h4>
-                      <label className="relative inline-flex items-center cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={integrationSettings.mpesaEnabled}
-                          onChange={(e) => setIntegrationSettings(prev => ({ ...prev, mpesaEnabled: e.target.checked }))}
-                          className="sr-only peer"
-                        />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                      </label>
+                      <span className="text-sm font-medium text-neutral-900">
+                        2.4 MB / 1 GB
+                      </span>
                     </div>
-                    {integrationSettings.mpesaEnabled && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-2">Consumer Key</label>
-                          <input
-                            type="password"
-                            value={integrationSettings.mpesaConsumerKey}
-                            onChange={(e) => setIntegrationSettings(prev => ({ ...prev, mpesaConsumerKey: e.target.value }))}
-                            className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                            placeholder="Enter M-Pesa consumer key"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-2">Consumer Secret</label>
-                          <input
-                            type="password"
-                            value={integrationSettings.mpesaConsumerSecret}
-                            onChange={(e) => setIntegrationSettings(prev => ({ ...prev, mpesaConsumerSecret: e.target.value }))}
-                            className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                            placeholder="Enter M-Pesa consumer secret"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
 
-                  {/* Email Configuration */}
-                  <div className="p-6 bg-neutral-50 rounded-xl border border-neutral-200">
-                    <h4 className="font-medium text-neutral-900 mb-4">Email Configuration</h4>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">Email Provider</label>
-                        <select
-                          value={integrationSettings.emailProvider}
-                          onChange={(e) => setIntegrationSettings(prev => ({ ...prev, emailProvider: e.target.value }))}
-                          className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        >
-                          <option value="smtp">SMTP</option>
-                          <option value="sendgrid">SendGrid</option>
-                          <option value="mailgun">Mailgun</option>
-                        </select>
-                      </div>
-                      {integrationSettings.emailProvider === 'smtp' && (
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-2">SMTP Host</label>
-                            <input
-                              type="text"
-                              value={integrationSettings.smtpHost}
-                              onChange={(e) => setIntegrationSettings(prev => ({ ...prev, smtpHost: e.target.value }))}
-                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                              placeholder="smtp.gmail.com"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium text-neutral-700 mb-2">SMTP Port</label>
-                            <input
-                              type="number"
-                              value={integrationSettings.smtpPort}
-                              onChange={(e) => setIntegrationSettings(prev => ({ ...prev, smtpPort: parseInt(e.target.value) }))}
-                              className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                              placeholder="587"
-                            />
-                          </div>
+                    <div className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                      <div className="flex items-center gap-3">
+                        <Shield className="w-5 h-5 text-neutral-500" />
+                        <div>
+                          <p className="font-medium text-neutral-900">Security Status</p>
+                          <p className="text-sm text-neutral-600">System security</p>
                         </div>
-                      )}
+                      </div>
+                      <span className="px-3 py-1 bg-green-100 text-green-700 rounded-full text-sm font-medium">
+                        Secure
+                      </span>
                     </div>
                   </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleSettingsUpdate('integrationSettings', integrationSettings)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : 'Save Integration Settings'}
-                    </button>
-                  </div>
                 </div>
-              </motion.div>
-            )}
-
-            {/* Data Settings */}
-            {activeTab === 'data' && (
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="space-y-6"
-              >
-                <div>
-                  <h3 className="text-lg font-semibold text-neutral-900 mb-2">Data Management</h3>
-                  <p className="text-neutral-600">Configure data export, import, and retention settings</p>
-                </div>
-
-                <div className="space-y-6">
-                  {/* Export Settings */}
-                  <div className="p-6 bg-neutral-50 rounded-xl border border-neutral-200">
-                    <h4 className="font-medium text-neutral-900 mb-4">Data Export</h4>
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h5 className="font-medium text-neutral-900">Auto Export</h5>
-                          <p className="text-sm text-neutral-600">Automatically export data at regular intervals</p>
-                        </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={dataSettings.autoExport}
-                            onChange={(e) => setDataSettings(prev => ({ ...prev, autoExport: e.target.checked }))}
-                            className="sr-only peer"
-                          />
-                          <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                        </label>
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-2">Export Format</label>
-                          <select
-                            value={dataSettings.exportFormat}
-                            onChange={(e) => setDataSettings(prev => ({ ...prev, exportFormat: e.target.value }))}
-                            className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                          >
-                            <option value="csv">CSV</option>
-                            <option value="json">JSON</option>
-                            <option value="xlsx">Excel</option>
-                          </select>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-neutral-700 mb-2">Export Frequency</label>
-                          <select
-                            value={dataSettings.exportFrequency}
-                            onChange={(e) => setDataSettings(prev => ({ ...prev, exportFrequency: e.target.value }))}
-                            className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                          >
-                            <option value="daily">Daily</option>
-                            <option value="weekly">Weekly</option>
-                            <option value="monthly">Monthly</option>
-                          </select>
-                        </div>
-                      </div>
-
-                      <button
-                        onClick={handleExportData}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Download className="w-4 h-4" />
-                        Export Data Now
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Data Retention */}
-                  <div className="p-6 bg-neutral-50 rounded-xl border border-neutral-200">
-                    <h4 className="font-medium text-neutral-900 mb-4">Data Retention</h4>
-                    <div className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-neutral-700 mb-2">
-                          Retention Period (days)
-                        </label>
-                        <input
-                          type="number"
-                          min="30"
-                          max="3650"
-                          value={dataSettings.retentionPeriod}
-                          onChange={(e) => setDataSettings(prev => ({ ...prev, retentionPeriod: parseInt(e.target.value) }))}
-                          className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        />
-                        <p className="text-xs text-neutral-500 mt-1">How long to keep data before automatic deletion</p>
-                      </div>
-
-                      <div className="space-y-3">
-                        {[
-                          { key: 'compressionEnabled', label: 'Data Compression', desc: 'Compress stored data to save space' },
-                          { key: 'encryptionEnabled', label: 'Data Encryption', desc: 'Encrypt sensitive data at rest' }
-                        ].map((setting) => (
-                          <div key={setting.key} className="flex items-center justify-between">
-                            <div>
-                              <h5 className="font-medium text-neutral-900">{setting.label}</h5>
-                              <p className="text-sm text-neutral-600">{setting.desc}</p>
-                            </div>
-                            <label className="relative inline-flex items-center cursor-pointer">
-                              <input
-                                type="checkbox"
-                                checked={dataSettings[setting.key as keyof typeof dataSettings] as boolean}
-                                onChange={(e) => setDataSettings(prev => ({ 
-                                  ...prev, 
-                                  [setting.key]: e.target.checked 
-                                }))}
-                                className="sr-only peer"
-                              />
-                              <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
-                            </label>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end">
-                    <button
-                      onClick={() => handleSettingsUpdate('dataSettings', dataSettings)}
-                      disabled={loading}
-                      className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : 'Save Data Settings'}
-                    </button>
-                  </div>
-                </div>
-              </motion.div>
+              </div>
             )}
           </div>
         </div>
+
+        {/* Confirmation Dialog */}
+        <AnimatePresence>
+          {showConfirmDialog && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <AlertCircle className="w-6 h-6 text-amber-500" />
+                  <h3 className="text-lg font-semibold text-neutral-900">Confirm Action</h3>
+                </div>
+                
+                <p className="text-neutral-600 mb-6">{confirmMessage}</p>
+                
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => setShowConfirmDialog(false)}
+                    className="px-4 py-2 text-neutral-600 hover:bg-neutral-100 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={() => {
+                      confirmAction();
+                      setShowConfirmDialog(false);
+                    }}
+                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                  >
+                    Confirm
+                  </button>
+                </div>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AdminLayout>
   );

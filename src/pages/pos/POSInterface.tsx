@@ -788,34 +788,52 @@ const POSInterface = () => {
               {/* Receipt Container */}
               <div className="mx-6 mb-6 bg-white border border-neutral-200 rounded-xl shadow-sm overflow-hidden print:mx-0 print:mb-0 print:border-0 print:shadow-none print:rounded-none">
                 {/* Business Header */}
-                <div className="bg-gradient-to-r from-primary to-primary-dark px-6 py-4 text-white print:bg-white print:text-black print:py-2">
+                <div className="bg-gradient-to-r from-primary to-primary-dark px-6 py-6 text-white print:bg-white print:text-black print:py-4 print:border-b print:border-neutral-200">
                   <div className="text-center">
-                    <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-2 print:bg-primary print:text-white">
-                      <ShoppingCart className="w-6 h-6" />
+                    <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 print:bg-primary print:text-white print:w-12 print:h-12 print:mb-3">
+                      <ShoppingCart className="w-8 h-8 print:w-6 print:h-6" />
                     </div>
-                    <h3 className="text-xl font-bold">Penchic Farm</h3>
-                    <p className="text-white/80 text-sm print:text-neutral-600">Premium Agricultural Products</p>
+                    <h3 className="text-2xl font-bold mb-2 print:text-xl print:mb-1">PENCHIC FARM</h3>
+                    <p className="text-white/90 text-base font-medium print:text-neutral-700 print:text-sm">Premium Agricultural Products</p>
+                    <div className="mt-3 pt-3 border-t border-white/20 print:border-neutral-200 text-sm print:text-xs">
+                      <p className="text-white/80 print:text-neutral-600">Limuru, Kiambu County, Kenya</p>
+                      <p className="text-white/80 print:text-neutral-600">Tel: +254 722 395 370 | +254 722 899 822</p>
+                      <p className="text-white/80 print:text-neutral-600">Email: info@penchicfarm.com</p>
+                    </div>
                   </div>
                 </div>
 
                 {/* Receipt Details */}
-                <div className="p-6">
+                <div className="p-6 print:p-4">
                   {/* Receipt Info */}
-                  <div className="bg-neutral-50 rounded-lg p-4 mb-6">
-                    <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="bg-neutral-50 rounded-lg p-4 mb-6 print:bg-transparent print:border print:border-neutral-200">
+                    <div className="text-center mb-4 print:mb-3">
+                      <h4 className="text-lg font-bold text-neutral-900 print:text-base">SALES RECEIPT</h4>
+                      <div className="w-16 h-0.5 bg-primary mx-auto mt-2 print:w-12"></div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-4 text-sm print:gap-2">
                       <div className="flex items-center gap-2">
                         <Receipt className="w-4 h-4 text-neutral-500" />
                         <div>
-                          <p className="text-neutral-500 text-xs uppercase tracking-wide">Receipt ID</p>
-                          <p className="font-mono font-medium">#{lastTransaction.orderId.slice(-8).toUpperCase()}</p>
+                          <p className="text-neutral-500 text-xs uppercase tracking-wide font-semibold">Receipt No.</p>
+                          <p className="font-mono font-bold text-primary">#{lastTransaction.orderId.slice(-8).toUpperCase()}</p>
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <Clock className="w-4 h-4 text-neutral-500" />
                         <div>
-                          <p className="text-neutral-500 text-xs uppercase tracking-wide">Date & Time</p>
-                          <p className="font-medium">{lastTransaction.timestamp.toLocaleDateString()}</p>
-                          <p className="text-neutral-600 text-xs">{lastTransaction.timestamp.toLocaleTimeString()}</p>
+                          <p className="text-neutral-500 text-xs uppercase tracking-wide font-semibold">Date & Time</p>
+                          <p className="font-bold">{lastTransaction.timestamp.toLocaleDateString('en-KE', {
+                            weekday: 'short',
+                            year: 'numeric',
+                            month: 'short',
+                            day: 'numeric'
+                          })}</p>
+                          <p className="text-neutral-600 text-xs font-medium">{lastTransaction.timestamp.toLocaleTimeString('en-KE', {
+                            hour: '2-digit',
+                            minute: '2-digit',
+                            second: '2-digit'
+                          })}</p>
                         </div>
                       </div>
                     </div>
@@ -823,20 +841,37 @@ const POSInterface = () => {
 
                   {/* Items List */}
                   <div className="mb-6">
-                    <h4 className="text-sm font-semibold text-neutral-700 uppercase tracking-wide mb-3">Items Purchased</h4>
-                    <div className="space-y-3">
+                    <div className="flex items-center justify-between mb-4">
+                      <h4 className="text-base font-bold text-neutral-900 uppercase tracking-wide">Items Purchased</h4>
+                      <div className="flex-1 border-b border-dashed border-neutral-300 mx-3"></div>
+                      <span className="text-sm text-neutral-500 font-medium">{lastTransaction.items.length} item(s)</span>
+                    </div>
+                    
+                    {/* Table Header */}
+                    <div className="grid grid-cols-12 gap-2 pb-2 mb-3 border-b border-neutral-200 text-xs font-bold text-neutral-700 uppercase tracking-wide">
+                      <div className="col-span-6">Item</div>
+                      <div className="col-span-2 text-center">Qty</div>
+                      <div className="col-span-2 text-right">Price</div>
+                      <div className="col-span-2 text-right">Total</div>
+                    </div>
+                    
+                    <div className="space-y-2">
                       {lastTransaction.items.map((item, index) => (
-                        <div key={index} className="flex justify-between items-start py-2 border-b border-neutral-100 last:border-b-0">
-                          <div className="flex-1">
-                            <p className="font-medium text-neutral-900">{item.name}</p>
-                            <p className="text-sm text-neutral-600">
-                              KES {item.price.toLocaleString()} × {item.quantity}
-                            </p>
+                        <div key={index} className="grid grid-cols-12 gap-2 py-2 border-b border-neutral-100 last:border-b-0 items-center">
+                          <div className="col-span-6">
+                            <p className="font-semibold text-neutral-900 text-sm leading-tight">{item.name}</p>
+                            <p className="text-xs text-neutral-500 mt-0.5">Unit: KES {item.price.toLocaleString('en-KE')}</p>
                           </div>
-                          <div className="text-right">
-                            <p className="font-semibold text-neutral-900">
-                              KES {(item.price * item.quantity).toLocaleString()}
-                            </p>
+                          <div className="col-span-2 text-center">
+                            <span className="inline-flex items-center justify-center w-8 h-6 bg-neutral-100 rounded text-xs font-bold text-neutral-900">
+                              {item.quantity}
+                            </span>
+                          </div>
+                          <div className="col-span-2 text-right">
+                            <p className="font-medium text-neutral-900 text-sm">KES {item.price.toLocaleString('en-KE')}</p>
+                          </div>
+                          <div className="col-span-2 text-right">
+                            <p className="font-bold text-neutral-900">KES {(item.price * item.quantity).toLocaleString('en-KE')}</p>
                           </div>
                         </div>
                       ))}
@@ -844,23 +879,24 @@ const POSInterface = () => {
                   </div>
 
                   {/* Totals Section */}
-                  <div className="border-t border-neutral-200 pt-4">
-                    <div className="space-y-2 mb-4">
-                      <div className="flex justify-between text-sm text-neutral-600">
-                        <span>Subtotal</span>
-                        <span>KES {lastTransaction.totals.subtotal.toLocaleString()}</span>
+                  <div className="border-t-2 border-neutral-300 pt-4">
+                    <div className="space-y-3 mb-4">
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm font-medium text-neutral-600">Subtotal</span>
+                        <span className="font-semibold text-neutral-900">KES {lastTransaction.totals.subtotal.toLocaleString('en-KE')}</span>
                       </div>
-                      <div className="flex justify-between text-sm text-neutral-600">
-                        <span>Tax (16% VAT)</span>
-                        <span>KES {lastTransaction.totals.tax.toLocaleString()}</span>
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm font-medium text-neutral-600">Tax (16% VAT)</span>
+                        <span className="font-semibold text-neutral-900">KES {lastTransaction.totals.tax.toLocaleString('en-KE')}</span>
                       </div>
+                      <div className="border-t border-dashed border-neutral-300 my-2"></div>
                     </div>
                     
                     {/* Total Amount - Highlighted */}
-                    <div className="bg-neutral-900 rounded-lg p-4 mb-4">
+                    <div className="bg-gradient-to-r from-primary to-primary-dark rounded-lg p-4 mb-4 print:bg-neutral-900">
                       <div className="flex justify-between items-center">
-                        <span className="text-white font-semibold">Total Amount</span>
-                        <span className="text-white text-xl font-bold">
+                        <span className="text-white font-bold text-lg">TOTAL AMOUNT</span>
+                        <span className="text-white text-2xl font-black">
                           KES {lastTransaction.totals.total.toLocaleString()}
                         </span>
                       </div>
@@ -868,51 +904,62 @@ const POSInterface = () => {
 
                     {/* Payment Details */}
                     <div className="space-y-3">
-                      <div className="flex items-center justify-between p-3 bg-blue-50 rounded-lg">
+                      <div className="flex items-center justify-between p-4 bg-blue-50 rounded-lg border border-blue-100">
                         <div className="flex items-center gap-2">
                           {lastTransaction.paymentMethod === 'cash' ? (
-                            <Banknote className="w-4 h-4 text-blue-600" />
+                            <Banknote className="w-5 h-5 text-blue-600" />
                           ) : (
-                            <CreditCard className="w-4 h-4 text-blue-600" />
+                            <CreditCard className="w-5 h-5 text-blue-600" />
                           )}
-                          <span className="text-sm font-medium text-blue-900">
+                          <span className="font-semibold text-blue-900">
                             Payment Method
                           </span>
                         </div>
-                        <span className="font-semibold text-blue-900 uppercase">
+                        <span className="font-bold text-blue-900 uppercase text-lg">
                           {lastTransaction.paymentMethod}
                         </span>
                       </div>
 
                       {lastTransaction.cashAmount && (
-                        <div className="flex items-center justify-between p-3 bg-green-50 rounded-lg">
+                        <div className="flex items-center justify-between p-4 bg-green-50 rounded-lg border border-green-100">
                           <div className="flex items-center gap-2">
-                            <div className="w-4 h-4 rounded-full bg-green-600 flex items-center justify-center">
-                              <span className="text-white text-xs font-bold">₹</span>
+                            <div className="w-5 h-5 rounded-full bg-green-600 flex items-center justify-center">
+                              <span className="text-white text-xs font-bold">KES</span>
                             </div>
-                            <span className="text-sm font-medium text-green-900">
+                            <span className="font-semibold text-green-900">
                               Change Given
                             </span>
                           </div>
-                          <span className="font-bold text-green-900 text-lg">
+                          <span className="font-bold text-green-900 text-xl">
                             KES {(lastTransaction.cashAmount - lastTransaction.totals.total).toLocaleString()}
                           </span>
                         </div>
                       )}
 
                       {lastTransaction.mpesaReference && (
-                        <div className="p-3 bg-neutral-50 rounded-lg">
-                          <p className="text-xs text-neutral-500 uppercase tracking-wide mb-1">M-Pesa Reference</p>
-                          <p className="font-mono text-sm font-medium">{lastTransaction.mpesaReference}</p>
+                        <div className="p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                          <p className="text-xs text-neutral-500 uppercase tracking-wide font-semibold mb-2">M-Pesa Reference</p>
+                          <p className="font-mono text-base font-bold text-primary">{lastTransaction.mpesaReference}</p>
                         </div>
                       )}
                     </div>
                   </div>
 
                   {/* Footer */}
-                  <div className="text-center mt-6 pt-4 border-t border-neutral-200">
-                    <p className="text-xs text-neutral-500">Thank you for shopping with us!</p>
-                    <p className="text-xs text-neutral-400 mt-1">Keep this receipt for your records</p>
+                  <div className="text-center mt-8 pt-6 border-t-2 border-neutral-200">
+                    <div className="mb-4">
+                      <p className="text-lg font-bold text-primary mb-2">Thank you for shopping with us!</p>
+                      <p className="text-sm text-neutral-600 font-medium">Your business is greatly appreciated</p>
+                    </div>
+                    <div className="bg-neutral-50 rounded-lg p-3 text-xs text-neutral-500">
+                      <p className="font-semibold mb-1">Important Notice:</p>
+                      <p>Please keep this receipt for your records and warranty claims.</p>
+                      <p className="mt-2">For inquiries, contact us at +254 722 395 370</p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-neutral-200">
+                      <p className="text-xs text-neutral-400">Served by: {user?.email}</p>
+                      <p className="text-xs text-neutral-400">Transaction ID: {lastTransaction.orderId}</p>
+                    </div>
                   </div>
                 </div>
               </div>
