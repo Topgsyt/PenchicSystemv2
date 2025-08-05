@@ -64,42 +64,33 @@ const Settings = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [errorMessage, setErrorMessage] = useState('');
 
-  // Check admin access
+  // Check admin access and load settings
   useEffect(() => {
     if (!user || user.role !== 'admin') {
       navigate('/');
       return;
     }
-    fetchSettings();
+    loadSettings();
   }, [user, navigate]);
 
-  // Fetch all settings
-  const fetchSettings = async () => {
-    setLoading(true);
+  // Load settings from localStorage
+  const loadSettings = () => {
     try {
-      // Load notification and display settings from localStorage
-      try {
-        const savedNotifications = localStorage.getItem('notification_settings');
-        if (savedNotifications) {
-          const parsed = JSON.parse(savedNotifications);
-          setNotificationSettings(parsed);
-        }
-
-        const savedDisplay = localStorage.getItem('display_settings');
-        if (savedDisplay) {
-          const parsed = JSON.parse(savedDisplay);
-          setDisplaySettings(parsed);
-        }
-      } catch (localStorageError) {
-        console.error('Error loading from localStorage:', localStorageError);
+      const savedNotifications = localStorage.getItem('notification_settings');
+      if (savedNotifications) {
+        const parsed = JSON.parse(savedNotifications);
+        setNotificationSettings(parsed);
       }
 
+      const savedDisplay = localStorage.getItem('display_settings');
+      if (savedDisplay) {
+        const parsed = JSON.parse(savedDisplay);
+        setDisplaySettings(parsed);
+      }
     } catch (error) {
-      console.error('Error fetching settings:', error);
+      console.error('Error loading from localStorage:', error);
       setErrorMessage('Failed to load settings');
       setTimeout(() => setErrorMessage(''), 3000);
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -151,9 +142,6 @@ const Settings = () => {
   };
 
   const tabs = [
-    { id: 'business', label: 'Business Info', icon: Building },
-    { id: 'tax', label: 'Tax & Pricing', icon: DollarSign },
-    { id: 'payment', label: 'Payment', icon: Percent },
     { id: 'notifications', label: 'Notifications', icon: Bell },
     { id: 'display', label: 'Display', icon: Monitor },
     { id: 'system', label: 'System', icon: SettingsIcon }
@@ -224,228 +212,6 @@ const Settings = () => {
           </div>
 
           <div className="p-6">
-            {/* Business Settings */}
-            {activeTab === 'business' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-neutral-900">Business Information</h3>
-                  <button
-                    onClick={() => showConfirmation('Save business settings?', saveBusinessSettings)}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Save className="w-4 h-4" />
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Business Name *
-                    </label>
-                    <input
-                      type="text"
-                      value={businessSettings.name}
-                      onChange={(e) => setBusinessSettings({...businessSettings, name: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="Enter business name"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Tax ID
-                    </label>
-                    <input
-                      type="text"
-                      value={businessSettings.tax_id}
-                      onChange={(e) => setBusinessSettings({...businessSettings, tax_id: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="Enter tax ID"
-                    />
-                  </div>
-
-                  <div className="md:col-span-2">
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      <MapPin className="w-4 h-4 inline mr-1" />
-                      Address *
-                    </label>
-                    <textarea
-                      value={businessSettings.address}
-                      onChange={(e) => setBusinessSettings({...businessSettings, address: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      rows={3}
-                      placeholder="Enter business address"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      <Phone className="w-4 h-4 inline mr-1" />
-                      Phone Number *
-                    </label>
-                    <input
-                      type="tel"
-                      value={businessSettings.phone}
-                      onChange={(e) => setBusinessSettings({...businessSettings, phone: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="+254 XXX XXX XXX"
-                      required
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      <Mail className="w-4 h-4 inline mr-1" />
-                      Email Address *
-                    </label>
-                    <input
-                      type="email"
-                      value={businessSettings.email}
-                      onChange={(e) => setBusinessSettings({...businessSettings, email: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="business@example.com"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Tax & Pricing Settings */}
-            {activeTab === 'tax' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-neutral-900">Tax Rates & Pricing</h3>
-                </div>
-
-                {/* Existing Tax Rates */}
-                <div className="space-y-4">
-                  <h4 className="font-medium text-neutral-900">Current Tax Rates</h4>
-                  {taxRates.length === 0 ? (
-                    <p className="text-neutral-500 text-center py-8">No tax rates configured yet</p>
-                  ) : (
-                    taxRates.map((rate) => (
-                      <div key={rate.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-                        <div className="flex items-center gap-4">
-                          <div>
-                            <p className="font-medium text-neutral-900">{rate.name}</p>
-                            <p className="text-sm text-neutral-600">{rate.rate}%</p>
-                          </div>
-                          {rate.is_default && (
-                            <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">Default</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => showConfirmation(`Delete tax rate "${rate.name}"?`, () => deleteTaxRate(rate.id!))}
-                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                {/* Add New Tax Rate */}
-                <div className="border-t border-neutral-200 pt-6">
-                  <h4 className="font-medium text-neutral-900 mb-4">Add New Tax Rate</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <input
-                      type="text"
-                      value={newTaxRate.name}
-                      onChange={(e) => setNewTaxRate({...newTaxRate, name: e.target.value})}
-                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="Tax name (e.g., VAT)"
-                    />
-                    <input
-                      type="number"
-                      value={newTaxRate.rate}
-                      onChange={(e) => setNewTaxRate({...newTaxRate, rate: parseFloat(e.target.value) || 0})}
-                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="Rate (%)"
-                      min="0"
-                      max="100"
-                      step="0.01"
-                    />
-                    <div className="flex items-center gap-4">
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={newTaxRate.is_default}
-                          onChange={(e) => setNewTaxRate({...newTaxRate, is_default: e.target.checked})}
-                          className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500/20"
-                        />
-                        <span className="text-sm text-neutral-700">Default</span>
-                      </label>
-                      <button
-                        onClick={() => {
-                          if (newTaxRate.name && newTaxRate.rate > 0) {
-                            saveTaxRate(newTaxRate);
-                            setNewTaxRate({ name: '', rate: 0, is_default: false });
-                          }
-                        }}
-                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Payment Settings */}
-            {activeTab === 'payment' && (
-              <div className="space-y-6">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold text-neutral-900">Payment Configuration</h3>
-                  <button
-                    onClick={() => showConfirmation('Save payment settings?', savePaymentInfo)}
-                    disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Save className="w-4 h-4" />
-                    {saving ? 'Saving...' : 'Save Changes'}
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      M-Pesa Paybill Number
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentInfo.paybill_number}
-                      onChange={(e) => setPaymentInfo({...paymentInfo, paybill_number: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="Enter paybill number"
-                    />
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-neutral-700 mb-2">
-                      Account Number
-                    </label>
-                    <input
-                      type="text"
-                      value={paymentInfo.account_number}
-                      onChange={(e) => setPaymentInfo({...paymentInfo, account_number: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
-                      placeholder="Enter account number"
-                    />
-                  </div>
-                </div>
-              </div>
-            )}
-
             {/* Notification Settings */}
             {activeTab === 'notifications' && (
               <div className="space-y-6">
