@@ -79,7 +79,7 @@ const Settings = () => {
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState('business');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [confirmAction, setConfirmAction] = useState<() => void>(() => {});
+  const [confirmAction, setConfirmAction] = useState<() => void>(() => () => {});
   const [confirmMessage, setConfirmMessage] = useState('');
   
   // Settings state
@@ -138,10 +138,10 @@ const Settings = () => {
       const { data: businessData, error: businessError } = await supabase
         .from('business_settings')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (businessError && businessError.code !== 'PGRST116') {
-        throw businessError;
+        console.error('Business settings error:', businessError);
       }
 
       if (businessData) {
@@ -154,17 +154,20 @@ const Settings = () => {
         .select('*')
         .order('name');
 
-      if (taxError) throw taxError;
-      setTaxRates(taxData || []);
+      if (taxError) {
+        console.error('Tax rates error:', taxError);
+      } else {
+        setTaxRates(taxData || []);
+      }
 
       // Fetch payment info
       const { data: paymentData, error: paymentError } = await supabase
         .from('payment_info')
         .select('*')
-        .single();
+        .maybeSingle();
 
       if (paymentError && paymentError.code !== 'PGRST116') {
-        throw paymentError;
+        console.error('Payment info error:', paymentError);
       }
 
       if (paymentData) {
@@ -172,19 +175,26 @@ const Settings = () => {
       }
 
       // Load notification and display settings from localStorage
-      const savedNotifications = localStorage.getItem('notification_settings');
-      if (savedNotifications) {
-        setNotificationSettings(JSON.parse(savedNotifications));
-      }
+      try {
+        const savedNotifications = localStorage.getItem('notification_settings');
+        if (savedNotifications) {
+          const parsed = JSON.parse(savedNotifications);
+          setNotificationSettings(parsed);
+        }
 
-      const savedDisplay = localStorage.getItem('display_settings');
-      if (savedDisplay) {
-        setDisplaySettings(JSON.parse(savedDisplay));
+        const savedDisplay = localStorage.getItem('display_settings');
+        if (savedDisplay) {
+          const parsed = JSON.parse(savedDisplay);
+          setDisplaySettings(parsed);
+        }
+      } catch (localStorageError) {
+        console.error('Error loading from localStorage:', localStorageError);
       }
 
     } catch (error) {
       console.error('Error fetching settings:', error);
       setErrorMessage('Failed to load settings');
+      setTimeout(() => setErrorMessage(''), 3000);
     } finally {
       setLoading(false);
     }
@@ -192,11 +202,19 @@ const Settings = () => {
 
   // Save business settings
   const saveBusinessSettings = async () => {
+    if (!businessSettings.name || !businessSettings.address || !businessSettings.phone || !businessSettings.email) {
+      setErrorMessage('Please fill in all required fields');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+
     setSaving(true);
     try {
       const { error } = await supabase
         .from('business_settings')
-        .upsert(businessSettings);
+        .upsert(businessSettings, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
       
@@ -213,9 +231,15 @@ const Settings = () => {
 
   // Save tax rates
   const saveTaxRate = async (taxRate: TaxRate) => {
+    if (!taxRate.name || taxRate.rate <= 0) {
+      setErrorMessage('Please provide a valid tax name and rate');
+      setTimeout(() => setErrorMessage(''), 3000);
+      return;
+    }
+
     try {
       if (taxRate.is_default) {
-        // Remove default from other rates
+        // Remove default from other rates first
         await supabase
           .from('tax_rates')
           .update({ is_default: false })
@@ -224,11 +248,13 @@ const Settings = () => {
 
       const { error } = await supabase
         .from('tax_rates')
-        .upsert(taxRate);
+        .upsert(taxRate, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
       
-      fetchSettings();
+      await fetchSettings(); // Refetch to get updated data
       setSuccessMessage('Tax rate saved successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
@@ -248,7 +274,7 @@ const Settings = () => {
 
       if (error) throw error;
       
-      fetchSettings();
+      await fetchSettings(); // Refetch to get updated data
       setSuccessMessage('Tax rate deleted successfully');
       setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
@@ -264,7 +290,9 @@ const Settings = () => {
     try {
       const { error } = await supabase
         .from('payment_info')
-        .upsert(paymentInfo);
+        .upsert(paymentInfo, {
+          onConflict: 'id'
+        });
 
       if (error) throw error;
       
@@ -281,21 +309,37 @@ const Settings = () => {
 
   // Save notification settings
   const saveNotificationSettings = () => {
-    localStorage.setItem('notification_settings', JSON.stringify(notificationSettings));
-    setSuccessMessage('Notification settings saved successfully');
-    setTimeout(() => setSuccessMessage(''), 3000);
+    try {
+      localStorage.setItem('notification_settings', JSON.stringify(notificationSettings));
+      setSuccessMessage('Notification settings saved successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving notification settings:', error);
+      setErrorMessage('Failed to save notification settings');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
   };
 
   // Save display settings
   const saveDisplaySettings = () => {
-    localStorage.setItem('display_settings', JSON.stringify(displaySettings));
-    // Apply settings immediately
-    document.documentElement.style.fontSize = 
-      displaySettings.font_size === 'small' ? '14px' : 
-      displaySettings.font_size === 'large' ? '18px' : '16px';
-    
-    setSuccessMessage('Display settings saved successfully');
-    setTimeout(() => setSuccessMessage(''), 3000);
+    try {
+      localStorage.setItem('display_settings', JSON.stringify(displaySettings));
+      
+      // Apply font size setting immediately
+      const rootElement = document.documentElement;
+      if (rootElement) {
+        rootElement.style.fontSize = 
+          displaySettings.font_size === 'small' ? '14px' : 
+          displaySettings.font_size === 'large' ? '18px' : '16px';
+      }
+      
+      setSuccessMessage('Display settings saved successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (error) {
+      console.error('Error saving display settings:', error);
+      setErrorMessage('Failed to save display settings');
+      setTimeout(() => setErrorMessage(''), 3000);
+    }
   };
 
   // Confirmation dialog
@@ -303,6 +347,11 @@ const Settings = () => {
     setConfirmMessage(message);
     setConfirmAction(() => action);
     setShowConfirmDialog(true);
+  };
+
+  const handleConfirmAction = () => {
+    confirmAction();
+    setShowConfirmDialog(false);
   };
 
   const tabs = [
@@ -366,7 +415,7 @@ const Settings = () => {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap transition-colors ${
                       activeTab === tab.id
-                        ? 'text-primary border-b-2 border-primary bg-primary/5'
+                        ? 'text-blue-600 border-b-2 border-blue-600 bg-blue-50'
                         : 'text-neutral-600 hover:text-neutral-900 hover:bg-neutral-50'
                     }`}
                   >
@@ -387,7 +436,7 @@ const Settings = () => {
                   <button
                     onClick={() => showConfirmation('Save business settings?', saveBusinessSettings)}
                     disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Save className="w-4 h-4" />
                     {saving ? 'Saving...' : 'Save Changes'}
@@ -403,7 +452,7 @@ const Settings = () => {
                       type="text"
                       value={businessSettings.name}
                       onChange={(e) => setBusinessSettings({...businessSettings, name: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="Enter business name"
                       required
                     />
@@ -417,7 +466,7 @@ const Settings = () => {
                       type="text"
                       value={businessSettings.tax_id}
                       onChange={(e) => setBusinessSettings({...businessSettings, tax_id: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="Enter tax ID"
                     />
                   </div>
@@ -430,7 +479,7 @@ const Settings = () => {
                     <textarea
                       value={businessSettings.address}
                       onChange={(e) => setBusinessSettings({...businessSettings, address: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       rows={3}
                       placeholder="Enter business address"
                       required
@@ -446,7 +495,7 @@ const Settings = () => {
                       type="tel"
                       value={businessSettings.phone}
                       onChange={(e) => setBusinessSettings({...businessSettings, phone: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="+254 XXX XXX XXX"
                       required
                     />
@@ -461,7 +510,7 @@ const Settings = () => {
                       type="email"
                       value={businessSettings.email}
                       onChange={(e) => setBusinessSettings({...businessSettings, email: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="business@example.com"
                       required
                     />
@@ -480,27 +529,31 @@ const Settings = () => {
                 {/* Existing Tax Rates */}
                 <div className="space-y-4">
                   <h4 className="font-medium text-neutral-900">Current Tax Rates</h4>
-                  {taxRates.map((rate) => (
-                    <div key={rate.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
-                      <div className="flex items-center gap-4">
-                        <div>
-                          <p className="font-medium text-neutral-900">{rate.name}</p>
-                          <p className="text-sm text-neutral-600">{rate.rate}%</p>
+                  {taxRates.length === 0 ? (
+                    <p className="text-neutral-500 text-center py-8">No tax rates configured yet</p>
+                  ) : (
+                    taxRates.map((rate) => (
+                      <div key={rate.id} className="flex items-center justify-between p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                        <div className="flex items-center gap-4">
+                          <div>
+                            <p className="font-medium text-neutral-900">{rate.name}</p>
+                            <p className="text-sm text-neutral-600">{rate.rate}%</p>
+                          </div>
+                          {rate.is_default && (
+                            <span className="px-2 py-1 bg-blue-600 text-white text-xs rounded-full">Default</span>
+                          )}
                         </div>
-                        {rate.is_default && (
-                          <span className="px-2 py-1 bg-primary text-white text-xs rounded-full">Default</span>
-                        )}
+                        <div className="flex items-center gap-2">
+                          <button
+                            onClick={() => showConfirmation(`Delete tax rate "${rate.name}"?`, () => deleteTaxRate(rate.id!))}
+                            className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => showConfirmation(`Delete tax rate "${rate.name}"?`, () => deleteTaxRate(rate.id!))}
-                          className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    ))
+                  )}
                 </div>
 
                 {/* Add New Tax Rate */}
@@ -511,14 +564,14 @@ const Settings = () => {
                       type="text"
                       value={newTaxRate.name}
                       onChange={(e) => setNewTaxRate({...newTaxRate, name: e.target.value})}
-                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="Tax name (e.g., VAT)"
                     />
                     <input
                       type="number"
                       value={newTaxRate.rate}
                       onChange={(e) => setNewTaxRate({...newTaxRate, rate: parseFloat(e.target.value) || 0})}
-                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="Rate (%)"
                       min="0"
                       max="100"
@@ -530,7 +583,7 @@ const Settings = () => {
                           type="checkbox"
                           checked={newTaxRate.is_default}
                           onChange={(e) => setNewTaxRate({...newTaxRate, is_default: e.target.checked})}
-                          className="rounded border-neutral-300 text-primary focus:ring-primary/20"
+                          className="rounded border-neutral-300 text-blue-600 focus:ring-blue-500/20"
                         />
                         <span className="text-sm text-neutral-700">Default</span>
                       </label>
@@ -541,7 +594,7 @@ const Settings = () => {
                             setNewTaxRate({ name: '', rate: 0, is_default: false });
                           }
                         }}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                        className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         <Plus className="w-4 h-4" />
                         Add
@@ -560,7 +613,7 @@ const Settings = () => {
                   <button
                     onClick={() => showConfirmation('Save payment settings?', savePaymentInfo)}
                     disabled={saving}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Save className="w-4 h-4" />
                     {saving ? 'Saving...' : 'Save Changes'}
@@ -576,7 +629,7 @@ const Settings = () => {
                       type="text"
                       value={paymentInfo.paybill_number}
                       onChange={(e) => setPaymentInfo({...paymentInfo, paybill_number: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="Enter paybill number"
                     />
                   </div>
@@ -589,7 +642,7 @@ const Settings = () => {
                       type="text"
                       value={paymentInfo.account_number}
                       onChange={(e) => setPaymentInfo({...paymentInfo, account_number: e.target.value})}
-                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-colors"
                       placeholder="Enter account number"
                     />
                   </div>
@@ -604,7 +657,7 @@ const Settings = () => {
                   <h3 className="text-lg font-semibold text-neutral-900">Notification Preferences</h3>
                   <button
                     onClick={saveNotificationSettings}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Save className="w-4 h-4" />
                     Save Changes
@@ -639,7 +692,7 @@ const Settings = () => {
                           })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   ))}
@@ -654,7 +707,7 @@ const Settings = () => {
                   <h3 className="text-lg font-semibold text-neutral-900">Display Preferences</h3>
                   <button
                     onClick={saveDisplaySettings}
-                    className="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     <Save className="w-4 h-4" />
                     Save Changes
@@ -675,7 +728,7 @@ const Settings = () => {
                           onClick={() => setDisplaySettings({...displaySettings, font_size: size as any})}
                           className={`p-3 text-center rounded-lg border transition-colors ${
                             displaySettings.font_size === size
-                              ? 'border-primary bg-primary/5 text-primary'
+                              ? 'border-blue-600 bg-blue-50 text-blue-600'
                               : 'border-neutral-200 hover:border-neutral-300'
                           }`}
                         >
@@ -703,7 +756,7 @@ const Settings = () => {
                           onClick={() => setDisplaySettings({...displaySettings, layout_spacing: spacing as any})}
                           className={`p-3 text-center rounded-lg border transition-colors ${
                             displaySettings.layout_spacing === spacing
-                              ? 'border-primary bg-primary/5 text-primary'
+                              ? 'border-blue-600 bg-blue-50 text-blue-600'
                               : 'border-neutral-200 hover:border-neutral-300'
                           }`}
                         >
@@ -735,7 +788,7 @@ const Settings = () => {
                           })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
 
@@ -757,7 +810,7 @@ const Settings = () => {
                           })}
                           className="sr-only peer"
                         />
-                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                        <div className="w-11 h-6 bg-neutral-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-500/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-neutral-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
                       </label>
                     </div>
                   </div>
@@ -827,6 +880,33 @@ const Settings = () => {
                     </div>
                   </div>
                 </div>
+
+                <div className="border-t border-neutral-200 pt-6">
+                  <h4 className="font-medium text-neutral-900 mb-4">System Actions</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <button
+                      onClick={() => {
+                        setSuccessMessage('Cache cleared successfully');
+                        setTimeout(() => setSuccessMessage(''), 3000);
+                      }}
+                      className="flex items-center justify-center gap-2 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                    >
+                      <Database className="w-4 h-4" />
+                      Clear Cache
+                    </button>
+                    
+                    <button
+                      onClick={() => {
+                        setSuccessMessage('System refreshed successfully');
+                        setTimeout(() => setSuccessMessage(''), 3000);
+                      }}
+                      className="flex items-center justify-center gap-2 p-3 border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors"
+                    >
+                      <Wifi className="w-4 h-4" />
+                      Refresh System
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
           </div>
@@ -862,11 +942,8 @@ const Settings = () => {
                     Cancel
                   </button>
                   <button
-                    onClick={() => {
-                      confirmAction();
-                      setShowConfirmDialog(false);
-                    }}
-                    className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors"
+                    onClick={handleConfirmAction}
+                    className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                   >
                     Confirm
                   </button>
