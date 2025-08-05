@@ -1,27 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
-import { supabase } from '../../lib/supabase';
 import AdminLayout from '../../components/admin/AdminLayout';
 import { 
   Save, 
-  Building, 
-  DollarSign, 
-  Percent, 
   Bell, 
-  User, 
-  Mail, 
-  Phone, 
-  MapPin,
   AlertCircle,
   CheckCircle,
-  X,
-  Edit3,
-  Plus,
-  Trash2,
   Settings as SettingsIcon,
   Monitor,
-  Smartphone,
   Type,
   Layout,
   Volume2,
@@ -31,29 +18,6 @@ import {
   HardDrive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-
-interface BusinessSettings {
-  id?: string;
-  name: string;
-  address: string;
-  phone: string;
-  email: string;
-  tax_id: string;
-  logo_url?: string;
-}
-
-interface TaxRate {
-  id?: string;
-  name: string;
-  rate: number;
-  is_default: boolean;
-}
-
-interface PaymentInfo {
-  id?: string;
-  paybill_number: string;
-  account_number: string;
-}
 
 interface NotificationSettings {
   email_notifications: boolean;
@@ -76,32 +40,11 @@ const Settings = () => {
   
   // State management
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [activeTab, setActiveTab] = useState('business');
+  const [activeTab, setActiveTab] = useState('notifications');
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmAction, setConfirmAction] = useState<() => void>(() => () => {});
   const [confirmMessage, setConfirmMessage] = useState('');
   
-  // Settings state
-  const [businessSettings, setBusinessSettings] = useState<BusinessSettings>({
-    name: '',
-    address: '',
-    phone: '',
-    email: '',
-    tax_id: ''
-  });
-  
-  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
-  const [newTaxRate, setNewTaxRate] = useState<TaxRate>({
-    name: '',
-    rate: 0,
-    is_default: false
-  });
-  
-  const [paymentInfo, setPaymentInfo] = useState<PaymentInfo>({
-    paybill_number: '',
-    account_number: ''
-  });
   
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     email_notifications: true,
@@ -134,46 +77,6 @@ const Settings = () => {
   const fetchSettings = async () => {
     setLoading(true);
     try {
-      // Fetch business settings
-      const { data: businessData, error: businessError } = await supabase
-        .from('business_settings')
-        .select('*')
-        .maybeSingle();
-
-      if (businessError && businessError.code !== 'PGRST116') {
-        console.error('Business settings error:', businessError);
-      }
-
-      if (businessData) {
-        setBusinessSettings(businessData);
-      }
-
-      // Fetch tax rates
-      const { data: taxData, error: taxError } = await supabase
-        .from('tax_rates')
-        .select('*')
-        .order('name');
-
-      if (taxError) {
-        console.error('Tax rates error:', taxError);
-      } else {
-        setTaxRates(taxData || []);
-      }
-
-      // Fetch payment info
-      const { data: paymentData, error: paymentError } = await supabase
-        .from('payment_info')
-        .select('*')
-        .maybeSingle();
-
-      if (paymentError && paymentError.code !== 'PGRST116') {
-        console.error('Payment info error:', paymentError);
-      }
-
-      if (paymentData) {
-        setPaymentInfo(paymentData);
-      }
-
       // Load notification and display settings from localStorage
       try {
         const savedNotifications = localStorage.getItem('notification_settings');
@@ -197,113 +100,6 @@ const Settings = () => {
       setTimeout(() => setErrorMessage(''), 3000);
     } finally {
       setLoading(false);
-    }
-  };
-
-  // Save business settings
-  const saveBusinessSettings = async () => {
-    if (!businessSettings.name || !businessSettings.address || !businessSettings.phone || !businessSettings.email) {
-      setErrorMessage('Please fill in all required fields');
-      setTimeout(() => setErrorMessage(''), 3000);
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('business_settings')
-        .upsert(businessSettings, {
-          onConflict: 'id'
-        });
-
-      if (error) throw error;
-      
-      setSuccessMessage('Business settings saved successfully');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (error) {
-      console.error('Error saving business settings:', error);
-      setErrorMessage('Failed to save business settings');
-      setTimeout(() => setErrorMessage(''), 3000);
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Save tax rates
-  const saveTaxRate = async (taxRate: TaxRate) => {
-    if (!taxRate.name || taxRate.rate <= 0) {
-      setErrorMessage('Please provide a valid tax name and rate');
-      setTimeout(() => setErrorMessage(''), 3000);
-      return;
-    }
-
-    try {
-      if (taxRate.is_default) {
-        // Remove default from other rates first
-        await supabase
-          .from('tax_rates')
-          .update({ is_default: false })
-          .neq('id', taxRate.id || '');
-      }
-
-      const { error } = await supabase
-        .from('tax_rates')
-        .upsert(taxRate, {
-          onConflict: 'id'
-        });
-
-      if (error) throw error;
-      
-      await fetchSettings(); // Refetch to get updated data
-      setSuccessMessage('Tax rate saved successfully');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (error) {
-      console.error('Error saving tax rate:', error);
-      setErrorMessage('Failed to save tax rate');
-      setTimeout(() => setErrorMessage(''), 3000);
-    }
-  };
-
-  // Delete tax rate
-  const deleteTaxRate = async (id: string) => {
-    try {
-      const { error } = await supabase
-        .from('tax_rates')
-        .delete()
-        .eq('id', id);
-
-      if (error) throw error;
-      
-      await fetchSettings(); // Refetch to get updated data
-      setSuccessMessage('Tax rate deleted successfully');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (error) {
-      console.error('Error deleting tax rate:', error);
-      setErrorMessage('Failed to delete tax rate');
-      setTimeout(() => setErrorMessage(''), 3000);
-    }
-  };
-
-  // Save payment info
-  const savePaymentInfo = async () => {
-    setSaving(true);
-    try {
-      const { error } = await supabase
-        .from('payment_info')
-        .upsert(paymentInfo, {
-          onConflict: 'id'
-        });
-
-      if (error) throw error;
-      
-      setSuccessMessage('Payment information saved successfully');
-      setTimeout(() => setSuccessMessage(''), 3000);
-    } catch (error) {
-      console.error('Error saving payment info:', error);
-      setErrorMessage('Failed to save payment information');
-      setTimeout(() => setErrorMessage(''), 3000);
-    } finally {
-      setSaving(false);
     }
   };
 
