@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { UserPlus, Trash2, Shield, Search, Filter, ChevronLeft, ChevronRight, Calendar, Mail, User as UserIcon, Eye, EyeOff, CheckCircle, XCircle } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Search, Filter, ChevronLeft, ChevronRight, Calendar, Mail, User as UserIcon, Eye, EyeOff, CheckCircle, XCircle, Edit3, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from '../../components/admin/AdminLayout';
 
@@ -14,6 +14,13 @@ const UserManagement = () => {
   const [sortBy, setSortBy] = useState('created_at');
   const [sortOrder, setSortOrder] = useState('desc');
   const [showUserDetails, setShowUserDetails] = useState(null);
+  const [editingUser, setEditingUser] = useState(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState({
+    email: '',
+    role: 'customer',
+    status: 'active'
+  });
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
@@ -100,6 +107,44 @@ const UserManagement = () => {
     } catch (error) {
       console.error('Error adding user:', error);
       alert(`Error adding user: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEditUser = (user) => {
+    setEditingUser(user);
+    setEditForm({
+      email: user.email,
+      role: user.role,
+      status: user.status || 'active'
+    });
+    setShowEditModal(true);
+  };
+
+  const handleUpdateUser = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({
+          email: editForm.email,
+          role: editForm.role,
+          status: editForm.status
+        })
+        .eq('id', editingUser.id);
+
+      if (error) throw error;
+
+      setShowEditModal(false);
+      setEditingUser(null);
+      fetchUsers();
+      alert('User updated successfully!');
+    } catch (error) {
+      console.error('Error updating user:', error);
+      alert(`Error updating user: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -444,6 +489,13 @@ const UserManagement = () => {
                     <td className="p-4">
                       <div className="flex items-center justify-end gap-2">
                         <button
+                          onClick={() => handleEditUser(user)}
+                          className="p-2 hover:bg-blue-50 rounded-lg text-blue-500 transition-colors touch-target"
+                          title="Edit user"
+                        >
+                          <Edit3 className="w-4 h-4" />
+                        </button>
+                        <button
                           onClick={() => handleStatusToggle(user.id, user.status)}
                           className={`p-2 rounded-lg transition-colors touch-target ${
                             user.status === 'active' 
@@ -539,6 +591,96 @@ const UserManagement = () => {
             </div>
           )}
         </div>
+
+        {/* Edit User Modal */}
+        <AnimatePresence>
+          {showEditModal && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+            >
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+              >
+                <div className="flex items-center justify-between mb-6">
+                  <h2 className="text-xl font-bold text-neutral-900">Edit User</h2>
+                  <button
+                    onClick={() => setShowEditModal(false)}
+                    className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleUpdateUser} className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      value={editForm.email}
+                      onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
+                      required
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Role
+                    </label>
+                    <select
+                      value={editForm.role}
+                      onChange={(e) => setEditForm({ ...editForm, role: e.target.value })}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
+                    >
+                      <option value="customer">Customer</option>
+                      <option value="worker">Worker</option>
+                      <option value="admin">Admin</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-neutral-700 mb-2">
+                      Status
+                    </label>
+                    <select
+                      value={editForm.status}
+                      onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
+                      className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors touch-target"
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row justify-end gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowEditModal(false)}
+                      className="px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors touch-target"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={loading}
+                      className="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed touch-target"
+                    >
+                      {loading ? 'Updating...' : 'Update User'}
+                    </button>
+                  </div>
+                </form>
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </AdminLayout>
   );
