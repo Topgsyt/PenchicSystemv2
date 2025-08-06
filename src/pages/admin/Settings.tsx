@@ -37,12 +37,6 @@ interface DataSettings {
   sync_frequency: number; // in minutes
   backup_retention: number; // in days
 }
-  email_notifications: boolean;
-  push_notifications: boolean;
-  low_stock_alerts: boolean;
-  order_notifications: boolean;
-  system_alerts: boolean;
-}
 
 interface NotificationSettings {
   email_notifications: boolean;
@@ -69,7 +63,6 @@ const Settings = () => {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [confirmAction, setConfirmAction] = useState<() => void>(() => () => {});
   const [confirmMessage, setConfirmMessage] = useState('');
-  
   
   const [notificationSettings, setNotificationSettings] = useState<NotificationSettings>({
     email_notifications: true,
