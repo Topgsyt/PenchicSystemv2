@@ -186,13 +186,101 @@ body {
 /* Print styles for receipts */
 @media print {
   @page {
-    size: 80mm auto;
+    size: 80mm auto; /* Thermal printer width */
     margin: 0;
+    padding: 0;
   }
   
   body {
-    font-size: 12px;
+    font-size: 11px;
     line-height: 1.4;
+    color: #000 !important;
+    background: #fff !important;
+  }
+  
+  /* Hide non-printable elements */
+  .print\\:hidden {
+    display: none !important;
+  }
+  
+  /* Receipt-specific print styles */
+  .receipt-container {
+    width: 80mm;
+    max-width: 80mm;
+    margin: 0 auto;
+    padding: 8px;
+    font-family: 'Courier New', monospace;
+  }
+  
+  .receipt-header {
+    text-align: center;
+    margin-bottom: 16px;
+    border-bottom: 2px solid #000;
+    padding-bottom: 8px;
+  }
+  
+  .receipt-business-name {
+    font-size: 16px !important;
+    font-weight: bold;
+    margin-bottom: 4px;
+  }
+  
+  .receipt-contact {
+    font-size: 9px !important;
+    line-height: 1.2;
+  }
+  
+  .receipt-section {
+    margin: 12px 0;
+    padding: 8px 0;
+  }
+  
+  .receipt-items-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+  }
+  
+  .receipt-items-table th,
+  .receipt-items-table td {
+    padding: 2px 4px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    font-size: 10px !important;
+  }
+  
+  .receipt-items-table th {
+    font-weight: bold;
+    border-bottom: 2px solid #000;
+  }
+  
+  .receipt-total-section {
+    border-top: 2px solid #000;
+    padding-top: 8px;
+    margin-top: 12px;
+  }
+  
+  .receipt-total-line {
+    display: flex;
+    justify-content: space-between;
+    margin: 2px 0;
+    font-size: 11px !important;
+  }
+  
+  .receipt-grand-total {
+    font-size: 14px !important;
+    font-weight: bold;
+    border-top: 1px solid #000;
+    padding-top: 4px;
+    margin-top: 8px;
+  }
+  
+  .receipt-footer {
+    text-align: center;
+    margin-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid #000;
+    font-size: 9px !important;
   }
   
   .print\\:text-xs {
@@ -308,6 +396,35 @@ body {
     border-radius: 0 !important;
   }
   
+  /* Enhanced print utilities */
+  .print\\:font-mono {
+    font-family: 'Courier New', monospace !important;
+  }
+  
+  .print\\:text-center {
+    text-align: center !important;
+  }
+  
+  .print\\:text-left {
+    text-align: left !important;
+  }
+  
+  .print\\:text-right {
+    text-align: right !important;
+  }
+  
+  .print\\:font-bold {
+    font-weight: bold !important;
+  }
+  
+  .print\\:border-t-2 {
+    border-top: 2px solid #000 !important;
+  }
+  
+  .print\\:border-b-2 {
+    border-bottom: 2px solid #000 !important;
+  }
+  
   .print\\:hidden {
     display: none !important;
   }
@@ -369,5 +486,58 @@ body {
     min-height: 48px;
     min-width: 48px;
     padding: 12px;
+  }
+  
+  /* Enhanced notification styles */
+  .notification-badge {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+  
+  /* Enhanced admin table styles */
+  .admin-table {
+    border-collapse: separate;
+    border-spacing: 0;
+  }
+  
+  .admin-table th {
+    position: sticky;
+    top: 0;
+    background: #f8f9fa;
+    z-index: 10;
+  }
+  
+  /* Enhanced form styles */
+  .form-section {
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 24px;
+  }
+  
+  /* Enhanced status indicators */
+  .status-indicator {
+    position: relative;
+    overflow: hidden;
+  }
+  
+  .status-indicator::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.4), transparent);
+    transition: left 0.5s;
+  }
+  
+  .status-indicator:hover::before {
+    left: 100%;
   }
 }
