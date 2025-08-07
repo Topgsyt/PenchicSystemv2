@@ -23,7 +23,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { useNavigate } from 'react-router-dom';
-import RealTimeNotifications from './RealTimeNotifications';
 
 interface HeaderProps {
   onMobileMenuToggle: () => void;
@@ -86,78 +85,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Real-time notifications setup
-  useEffect(() => {
-    const setupNotifications = () => {
-      try {
-        // Subscribe to new orders
-        const ordersSubscription = supabase
-          .channel('orders_changes')
-          .on('postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'orders' },
-            (payload) => {
-              addNotification({
-                type: 'new_order',
-                title: 'New Order Received',
-                message: `Order #${payload.new.id.slice(0, 8)} - KES ${payload.new.total.toLocaleString()}`,
-                data: payload.new
-              });
-            }
-          )
-          .subscribe((status) => {
-            setIsConnected(status === 'SUBSCRIBED');
-          });
-
-        // Subscribe to stock updates
-        const productsSubscription = supabase
-          .channel('products_changes')
-          .on('postgres_changes',
-            { event: 'UPDATE', schema: 'public', table: 'products' },
-            (payload) => {
-              const product = payload.new;
-              if (product.stock <= 5 && product.stock > 0) {
-                addNotification({
-                  type: 'low_stock',
-                  title: 'Low Stock Alert',
-                  message: `${product.name} is running low (${product.stock} units left)`,
-                  data: product
-                });
-              }
-            }
-          )
-          .subscribe();
-
-        // Subscribe to new user registrations
-        const profilesSubscription = supabase
-          .channel('profiles_changes')
-          .on('postgres_changes',
-            { event: 'INSERT', schema: 'public', table: 'profiles' },
-            (payload) => {
-              addNotification({
-                type: 'user_registration',
-                title: 'New User Registration',
-                message: `${payload.new.email} registered as ${payload.new.role}`,
-                data: payload.new
-              });
-            }
-          )
-          .subscribe();
-
-        return () => {
-          ordersSubscription.unsubscribe();
-          productsSubscription.unsubscribe();
-          profilesSubscription.unsubscribe();
-        };
-      } catch (error) {
-        console.error('Error setting up notifications:', error);
-        setIsConnected(false);
-      }
-    };
-
-    const cleanup = setupNotifications();
-    return cleanup;
-  }, []);
-
   // Add notification function
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     const newNotification: Notification = {
@@ -177,6 +104,117 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
       });
     }
   };
+
+  // Real-time notifications setup
+  useEffect(() => {
+    const setupNotifications = async () => {
+      try {
+        // First check if user is authenticated
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        if (!authUser) {
+          console.log('No authenticated user for notifications');
+          return;
+        }
+
+        console.log('Setting up real-time notifications...');
+
+        // Subscribe to new orders
+        const ordersSubscription = supabase
+          .channel('orders_changes')
+          .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'orders' },
+            (payload) => {
+              console.log('New order received:', payload);
+              addNotification({
+                type: 'new_order',
+                title: 'New Order Received',
+                message: `Order #${payload.new.id.slice(0, 8)} - KES ${payload.new.total.toLocaleString()}`,
+                data: payload.new
+              });
+            }
+          )
+          .subscribe((status) => {
+            console.log('Orders subscription status:', status);
+            setIsConnected(status === 'SUBSCRIBED');
+          });
+
+        // Subscribe to stock updates
+        const productsSubscription = supabase
+          .channel('products_changes')
+          .on('postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'products' },
+            (payload) => {
+              console.log('Product updated:', payload);
+              const product = payload.new;
+              if (product.stock <= 5 && product.stock > 0) {
+                addNotification({
+                  type: 'low_stock',
+                  title: 'Low Stock Alert',
+                  message: `${product.name} is running low (${product.stock} units left)`,
+                  data: product
+                });
+              }
+            }
+          )
+          .subscribe((status) => {
+            console.log('Products subscription status:', status);
+          });
+
+        // Subscribe to new user registrations
+        const profilesSubscription = supabase
+          .channel('profiles_changes')
+          .on('postgres_changes',
+            { event: 'INSERT', schema: 'public', table: 'profiles' },
+            (payload) => {
+              console.log('New user registered:', payload);
+              addNotification({
+                type: 'user_registration',
+                title: 'New User Registration',
+                message: `${payload.new.email} registered as ${payload.new.role}`,
+                data: payload.new
+              });
+            }
+          )
+          .subscribe((status) => {
+            console.log('Profiles subscription status:', status);
+          });
+
+        // Add some demo notifications for testing
+        setTimeout(() => {
+          addNotification({
+            type: 'new_order',
+            title: 'Demo: New Order',
+            message: 'Order #12345678 - KES 2,500'
+          });
+        }, 2000);
+
+        setTimeout(() => {
+          addNotification({
+            type: 'low_stock',
+            title: 'Demo: Low Stock',
+            message: 'MacBook Pro is running low (3 units left)'
+          });
+        }, 4000);
+
+        return () => {
+          console.log('Cleaning up subscriptions...');
+          ordersSubscription.unsubscribe();
+          productsSubscription.unsubscribe();
+          profilesSubscription.unsubscribe();
+        };
+      } catch (error) {
+        console.error('Error setting up notifications:', error);
+        setIsConnected(false);
+      }
+    };
+
+    const cleanup = setupNotifications();
+    return () => {
+      if (cleanup instanceof Promise) {
+        cleanup.then(cleanupFn => cleanupFn?.());
+      }
+    };
+  }, [user]);
 
   // Mark notification as read
   const markAsRead = (id: string) => {
@@ -319,6 +357,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
       Notification.requestPermission();
     }
   }, []);
+
   return (
     <header className="bg-white border-b border-neutral-200 px-3 sm:px-4 lg:px-6 py-3 sm:py-4 sticky top-0 z-40">
       <div className="flex items-center justify-between">
@@ -428,7 +467,105 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
           </motion.button>
 
           {/* Notifications */}
-          <RealTimeNotifications />
+          <div className="relative" ref={notificationRef}>
+            <motion.button
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+            >
+              <Bell className="w-5 h-5 text-neutral-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-medium rounded-full flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              )}
+              {/* Connection Status Indicator */}
+              <span className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-400'}`} />
+            </motion.button>
+
+            {/* Notifications Dropdown */}
+            <AnimatePresence>
+              {showNotifications && (
+                <motion.div
+                  initial={{ opacity: 0, y: -10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -10 }}
+                  className="absolute top-full right-0 mt-2 w-80 bg-white border border-neutral-200 rounded-lg shadow-lg z-50 max-h-96 overflow-hidden"
+                >
+                  {/* Header */}
+                  <div className="p-4 border-b border-neutral-200 flex items-center justify-between">
+                    <h3 className="font-semibold text-neutral-900">
+                      Notifications ({unreadCount})
+                    </h3>
+                    <div className="flex gap-2">
+                      {unreadCount > 0 && (
+                        <button
+                          onClick={markAllAsRead}
+                          className="text-xs text-blue-600 hover:text-blue-700"
+                        >
+                          Mark all read
+                        </button>
+                      )}
+                      {notifications.length > 0 && (
+                        <button
+                          onClick={clearAllNotifications}
+                          className="text-xs text-red-600 hover:text-red-700"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Notifications List */}
+                  <div className="max-h-80 overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      notifications.map((notification) => (
+                        <div
+                          key={notification.id}
+                          className={`p-4 border-b border-neutral-100 hover:bg-neutral-50 cursor-pointer transition-colors ${
+                            !notification.read ? 'bg-blue-50/50' : ''
+                          }`}
+                          onClick={() => markAsRead(notification.id)}
+                        >
+                          <div className="flex items-start gap-3">
+                            <div className="flex-shrink-0 mt-1">
+                              {getNotificationIcon(notification.type)}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between">
+                                <p className="font-medium text-sm text-neutral-900 truncate">
+                                  {notification.title}
+                                </p>
+                                {!notification.read && (
+                                  <div className="w-2 h-2 bg-blue-500 rounded-full ml-2"></div>
+                                )}
+                              </div>
+                              <p className="text-sm text-neutral-600 mt-1 break-words">
+                                {notification.message}
+                              </p>
+                              <p className="text-xs text-neutral-400 mt-2 flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                {formatTimeAgo(notification.timestamp)}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      ))
+                    ) : (
+                      <div className="p-8 text-center text-neutral-500">
+                        <Bell className="w-8 h-8 mx-auto mb-2 text-neutral-400" />
+                        <p className="text-sm">No notifications yet</p>
+                        <p className="text-xs text-neutral-400 mt-1">
+                          {isConnected ? 'Connected - waiting for updates' : 'Connecting...'}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </div>
 
           {/* Account Menu */}
           <div className="relative" ref={accountRef}>
