@@ -179,22 +179,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             console.log('Profiles subscription status:', status);
           });
 
-        // Add some demo notifications for testing
-        setTimeout(() => {
-          addNotification({
-            type: 'new_order',
-            title: 'Demo: New Order',
-            message: 'Order #12345678 - KES 2,500'
-          });
-        }, 2000);
-
-        setTimeout(() => {
-          addNotification({
-            type: 'low_stock',
-            title: 'Demo: Low Stock',
-            message: 'MacBook Pro is running low (3 units left)'
-          });
-        }, 4000);
+        // Real-time notifications are now active
 
         return () => {
           console.log('Cleaning up subscriptions...');
