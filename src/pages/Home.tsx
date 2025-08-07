@@ -1,9 +1,22 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+// import { Link } from 'react-router-dom'; // Commented out for demo
 import Typed from 'typed.js';
-import { supabase } from '../lib/supabase';
-import ScrollReveal from '../components/animations/ScrollReveal';
+import { supabase } from '../lib/supabase'; // Commented out for demo
+// const supabase = null; // Mock for demo
+import ScrollReveal from '../components/animations/ScrollReveal'; // Commented out for demo
+
+// Mock ScrollReveal component for demo
+const ScrollReveal = ({ children, direction = 'up', delay = 0 }) => (
+  <motion.div
+    initial={{ opacity: 0, y: direction === 'up' ? 30 : direction === 'down' ? -30 : 0, x: direction === 'left' ? -30 : direction === 'right' ? 30 : 0 }}
+    whileInView={{ opacity: 1, y: 0, x: 0 }}
+    viewport={{ once: true }}
+    transition={{ duration: 0.6, delay }}
+  >
+    {children}
+  </motion.div>
+);
 import {
   Wheat,
   MapPin,
@@ -16,7 +29,11 @@ import {
   Beef,
   Fish,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  ArrowUpRight,
+  Star,
+  TrendingUp,
+  Award
 } from 'lucide-react';
 
 const heroImages = [
@@ -29,15 +46,39 @@ const heroImages = [
 const categories = [
   {
     title: 'Poultry Feed',
-    description: 'Complete nutrition for chickens, ducks, and other poultry',
+    description: 'Complete nutrition for chickens, ducks, and other poultry with specialized formulas for different growth stages',
     icon: Egg,
-    link: '/shop?category=poultry'
+    link: '/shop?category=poultry',
+    features: ['High Protein', 'Vitamins & Minerals', 'Growth Formula'],
+    popular: true,
+    image: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=400'
   },
   {
     title: 'Cattle Feed',
-    description: 'High-quality feed for dairy and beef cattle',
+    description: 'Premium quality feed for dairy and beef cattle, designed to maximize milk production and healthy weight gain',
     icon: Beef,
-    link: '/shop?category=cattle'
+    link: '/shop?category=cattle',
+    features: ['Enhanced Nutrition', 'Digestive Health', 'Milk Boost'],
+    popular: false,
+    image: 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&q=80&w=400'
+  },
+  {
+    title: 'Fish Feed',
+    description: 'Specialized aquaculture nutrition for various fish species with optimal protein and nutrient balance',
+    icon: Fish,
+    link: '/shop?category=fish',
+    features: ['Water Stable', 'High Protein', 'Fast Growth'],
+    popular: false,
+    image: 'https://images.unsplash.com/photo-1544551763-46a013bb70d5?auto=format&fit=crop&q=80&w=400'
+  },
+  {
+    title: 'Premium Mix',
+    description: 'Custom blended feeds tailored to specific livestock needs with premium ingredients and additives',
+    icon: Wheat,
+    link: '/shop?category=premium',
+    features: ['Custom Blend', 'Premium Quality', 'Expert Formulated'],
+    popular: true,
+    image: 'https://images.unsplash.com/photo-1574323347407-f5e1ad6d020b?auto=format&fit=crop&q=80&w=400'
   },
 ];
 
@@ -70,20 +111,28 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    const fetchProducts = async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .gt('stock', 0)
-        .order('created_at', { ascending: false })
-        .limit(2);
-
-      if (!error && data) {
-        setFeaturedProducts(data);
+    // Mock fetch since supabase is not available in demo
+    const mockProducts = [
+      {
+        id: 1,
+        name: 'Premium Poultry Starter',
+        description: 'High-protein formula for young chickens',
+        price: 2500,
+        category: 'Poultry',
+        image_url: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=400',
+        stock: 50
+      },
+      {
+        id: 2,
+        name: 'Dairy Cattle Concentrate',
+        description: 'Enhanced nutrition for milk production',
+        price: 3200,
+        category: 'Cattle',
+        image_url: 'https://images.unsplash.com/photo-1500595046743-cd271d694d30?auto=format&fit=crop&q=80&w=400',
+        stock: 30
       }
-    };
-
-    fetchProducts();
+    ];
+    setFeaturedProducts(mockProducts);
   }, []);
 
   const nextImage = () => {
@@ -179,15 +228,15 @@ export default function Home() {
               transition={{ duration: 0.8 }}
               className="flex flex-col sm:flex-row items-center justify-center gap-4"
             >
-              <Link
-                to="/shop"
+              <button
+                onClick={() => window.open('/shop', '_blank')}
                 className="px-8 py-3 text-lg font-medium bg-white text-[#2B5741] rounded-full hover:bg-[#f8f9fa] transition-colors shadow-lg"
               >
                 <span className="flex items-center">
                   <Store className="mr-2 h-5 w-5" />
                   Shop Now
                 </span>
-              </Link>
+              </button>
               <button
                 onClick={() => setShowContact(true)}
                 className="px-8 py-3 text-lg font-medium text-white bg-[#2B5741]/80 backdrop-blur-sm rounded-full hover:bg-[#2B5741] transition-colors shadow-lg"
@@ -256,40 +305,163 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Categories Section */}
-      <section className="py-20 bg-neutral-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* Enhanced Categories Section */}
+      <section className="py-24 bg-gradient-to-br from-neutral-50 to-white relative overflow-hidden">
+        {/* Subtle background pattern */}
+        <div className="absolute inset-0 opacity-[0.03]">
+          <div className="absolute inset-0" style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Ccircle cx='30' cy='30' r='4'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+          }} />
+        </div>
+
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <ScrollReveal>
-            <div className="text-center mb-16">
-              <h2 className="text-4xl font-bold text-neutral-900 mb-4">Our Feed Categories</h2>
-              <p className="text-neutral-700 max-w-2xl mx-auto">
-                Quality nutrition for all your livestock needs
+            <div className="text-center mb-20">
+              <motion.div
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                className="inline-flex items-center bg-[#2B5741]/10 text-[#2B5741] px-4 py-2 rounded-full text-sm font-medium mb-6"
+              >
+                <Star className="w-4 h-4 mr-2" />
+                Premium Feed Solutions
+              </motion.div>
+              <h2 className="text-4xl md:text-5xl font-bold text-neutral-900 mb-6">
+                Our Feed Categories
+              </h2>
+              <p className="text-xl text-neutral-600 max-w-3xl mx-auto leading-relaxed">
+                Discover our comprehensive range of scientifically formulated feeds, each designed to meet the specific nutritional needs of your livestock
               </p>
             </div>
           </ScrollReveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
             {categories.map((category, index) => (
               <ScrollReveal
                 key={category.title}
                 direction={index % 2 === 0 ? 'left' : 'right'}
-                delay={index * 0.1}
+                delay={index * 0.15}
               >
-                <Link to={category.link}>
+                <button onClick={() => window.open(category.link, '_blank')} className="block group">
                   <motion.div
-                    whileHover={{ scale: 1.05 }}
-                    className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all border border-neutral-200"
+                    whileHover={{ 
+                      scale: 1.02, 
+                      y: -8,
+                      boxShadow: "0 25px 50px -12px rgba(0, 0, 0, 0.15)"
+                    }}
+                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    className="relative bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-neutral-100"
                   >
-                    <div className="bg-[#2B5741]/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-6">
-                      <category.icon className="w-8 h-8 text-[#2B5741]" />
+                    {/* Popular badge */}
+                    {category.popular && (
+                      <div className="absolute top-4 right-4 z-20">
+                        <div className="bg-gradient-to-r from-yellow-400 to-orange-500 text-white px-3 py-1 rounded-full text-xs font-bold flex items-center shadow-lg">
+                          <TrendingUp className="w-3 h-3 mr-1" />
+                          POPULAR
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex flex-col md:flex-row">
+                      {/* Image Section */}
+                      <div className="md:w-2/5 relative">
+                        <div className="aspect-[4/3] md:aspect-auto md:h-full relative overflow-hidden">
+                          <img
+                            src={category.image}
+                            alt={category.title}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                          />
+                          <div className="absolute inset-0 bg-gradient-to-tr from-[#2B5741]/20 to-transparent" />
+                          
+                          {/* Floating icon */}
+                          <div className="absolute bottom-4 left-4">
+                            <div className="bg-white/20 backdrop-blur-sm p-3 rounded-2xl border border-white/30">
+                              <category.icon className="w-8 h-8 text-white" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Content Section */}
+                      <div className="md:w-3/5 p-8 flex flex-col justify-between">
+                        <div>
+                          <div className="flex items-start justify-between mb-4">
+                            <div>
+                              <h3 className="text-2xl font-bold text-neutral-900 mb-2 group-hover:text-[#2B5741] transition-colors">
+                                {category.title}
+                              </h3>
+                              <p className="text-neutral-600 leading-relaxed mb-6">
+                                {category.description}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Features */}
+                          <div className="grid grid-cols-1 gap-3 mb-6">
+                            {category.features.map((feature, idx) => (
+                              <div key={idx} className="flex items-center">
+                                <div className="w-2 h-2 bg-[#2B5741] rounded-full mr-3 group-hover:bg-[#D4A373] transition-colors" />
+                                <span className="text-neutral-700 font-medium">{feature}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* CTA */}
+                        <div className="flex items-center justify-between pt-4 border-t border-neutral-100">
+                          <span className="text-[#2B5741] font-semibold group-hover:text-[#1A3F2E] transition-colors">
+                            Explore Products
+                          </span>
+                          <motion.div
+                            whileHover={{ x: 4 }}
+                            className="p-2 bg-[#2B5741]/10 rounded-full group-hover:bg-[#2B5741] transition-colors"
+                          >
+                            <ArrowUpRight className="w-5 h-5 text-[#2B5741] group-hover:text-white transition-colors" />
+                          </motion.div>
+                        </div>
+                      </div>
                     </div>
-                    <h3 className="text-2xl font-bold text-neutral-900 mb-4">{category.title}</h3>
-                    <p className="text-neutral-700">{category.description}</p>
+
+                    {/* Hover overlay effect */}
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#2B5741]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
                   </motion.div>
-                </Link>
+                </button>
               </ScrollReveal>
             ))}
           </div>
+
+          {/* Bottom CTA */}
+          <ScrollReveal>
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.6 }}
+              className="text-center mt-16"
+            >
+              <div className="bg-gradient-to-r from-[#2B5741] to-[#1A3F2E] rounded-2xl p-8 text-white">
+                <div className="flex items-center justify-center mb-4">
+                  <Award className="w-6 h-6 mr-2 text-[#D4A373]" />
+                  <span className="text-[#D4A373] font-medium">Quality Guaranteed</span>
+                </div>
+                <h3 className="text-2xl font-bold mb-2">
+                  Need a Custom Feed Solution?
+                </h3>
+                <p className="text-neutral-200 mb-6 max-w-2xl mx-auto">
+                  Our nutrition experts can create a custom blend specifically tailored to your livestock's unique needs and requirements.
+                </p>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={() => setShowContact(true)}
+                  className="bg-[#D4A373] hover:bg-[#C4946A] text-[#2B5741] font-semibold px-8 py-3 rounded-full transition-colors inline-flex items-center"
+                >
+                  <Phone className="w-5 h-5 mr-2" />
+                  Consult Our Experts
+                </motion.button>
+              </div>
+            </motion.div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -302,13 +474,13 @@ export default function Home() {
                 <h2 className="text-4xl font-bold text-neutral-900">Featured Products</h2>
                 <p className="text-neutral-700 mt-2">Our best-selling feed solutions</p>
               </div>
-              <Link
-                to="/shop"
+              <button
+                onClick={() => window.open('/shop', '_blank')}
                 className="text-[#2B5741] hover:text-[#1A3F2E] font-medium flex items-center"
               >
                 View all products
                 <ExternalLink className="ml-2 w-4 h-4" />
-              </Link>
+              </button>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -317,7 +489,7 @@ export default function Home() {
                   key={product.id}
                   direction={index % 2 === 0 ? 'left' : 'right'}
                 >
-                  <Link to={`/product/${product.id}`}>
+                  <button onClick={() => window.open(`/product/${product.id}`, '_blank')}>
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all border border-neutral-200"
@@ -345,7 +517,7 @@ export default function Home() {
                         </div>
                       </div>
                     </motion.div>
-                  </Link>
+                  </button>
                 </ScrollReveal>
               ))}
             </div>
@@ -364,13 +536,13 @@ export default function Home() {
               Visit our store or contact us to learn more about our premium feed products.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <Link
-                to="/shop"
+              <button
+                onClick={() => window.open('/shop', '_blank')}
                 className="inline-flex items-center px-8 py-3 text-lg font-medium text-[#2B5741] bg-[#D4A373] rounded-full hover:bg-[#C4946A] transition-colors"
               >
                 <Store className="mr-2 h-5 w-5" />
                 Visit Store
-              </Link>
+              </button>
               <button
                 onClick={() => setShowContact(true)}
                 className="inline-flex items-center px-8 py-3 text-lg font-medium text-white border-2 border-white rounded-full hover:bg-white hover:text-[#2B5741] transition-colors"
