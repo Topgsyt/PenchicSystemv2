@@ -24,11 +24,40 @@ interface OrderSnapshot {
   product_category: string;
   price_at_time: number;
   variant_size?: string;
+  product_image_url?: string;
+}
+
+interface OrderItem {
+  id: string;
+  quantity: number;
+  price: number;
+  order_product_snapshots: OrderSnapshot[];
+}
+
+interface Payment {
+  payment_method: string;
+  status: string;
+  mpesa_reference?: string;
+}
+
+interface Order {
+  id: string;
+  created_at: string;
+  status: string;
+  total: number;
+  profiles?: {
+    email: string;
+    role: string;
+  };
+  order_items: OrderItem[];
+  order_calculations: OrderCalculation[];
+  payments: Payment[];
 }
 
 const Orders = () => {
-  const [orders, setOrders] = useState<any[]>([]);
+  const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [reportPeriod, setReportPeriod] = useState<string>('monthly');
@@ -52,41 +81,35 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-  }, [sortBy, sortOrder, reportPeriod, customStartDate, customEndDate]);
+  }, [sortBy, sortOrder]);
+
+  useEffect(() => {
+    if (reportPeriod !== 'custom') {
+      fetchOrders();
+    }
+  }, [reportPeriod]);
+
+  useEffect(() => {
+    if (reportPeriod === 'custom' && customStartDate && customEndDate) {
+      fetchOrders();
+    }
+  }, [customStartDate, customEndDate]);
 
   const fetchOrders = async () => {
     setLoading(true);
+    setError(null);
+    
     try {
-      // Get date range for filtering
-      const { startDate, endDate } = getDateRange();
+      console.log('Fetching orders...');
       
+      // Start with a simple query first
       let query = supabase
         .from('orders')
-        .select(`
-          *,
-          profiles (email, role),
-          order_items (
-            *,
-            order_product_snapshots (
-              product_name,
-              product_category,
-              price_at_time,
-              variant_size,
-              product_image_url
-            )
-          ),
-          order_calculations (
-            subtotal,
-            tax_amount,
-            discount_amount,
-            shipping_fee,
-            total_amount,
-            tax_rate
-          ),
-          payments (*)
-        `)
+        .select('*')
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
+      // Apply date filtering if needed
+      const { startDate, endDate } = getDateRange();
       if (startDate && endDate) {
         query = query
           .gte('created_at', startDate.toISOString())
@@ -95,33 +118,135 @@ const Orders = () => {
 
       const { data: ordersData, error: ordersError } = await query;
 
-      if (ordersError) throw ordersError;
+      if (ordersError) {
+        console.error('Orders query error:', ordersError);
+        throw new Error(`Failed to fetch orders: ${ordersError.message}`);
+      }
 
-      // Calculate comprehensive statistics
-      const stats = calculateOrderStatistics(ordersData || []);
+      console.log('Base orders fetched:', ordersData?.length || 0);
+
+      if (!ordersData || ordersData.length === 0) {
+        setOrders([]);
+        setOrderStats({
+          total: 0,
+          pending: 0,
+          processing: 0,
+          completed: 0,
+          cancelled: 0,
+          totalRevenue: 0,
+          averageOrder: 0,
+          revenueChange: 0,
+          orderGrowth: 0
+        });
+        setLoading(false);
+        return;
+      }
+
+      // Fetch related data separately to avoid complex joins
+      const enrichedOrders = await Promise.all(
+        ordersData.map(async (order) => {
+          try {
+            // Fetch profile data
+            const { data: profileData } = await supabase
+              .from('profiles')
+              .select('email, role')
+              .eq('id', order.user_id)
+              .single();
+
+            // Fetch order items
+            const { data: orderItems } = await supabase
+              .from('order_items')
+              .select('*')
+              .eq('order_id', order.id);
+
+            // Fetch order calculations
+            const { data: orderCalculations } = await supabase
+              .from('order_calculations')
+              .select('*')
+              .eq('order_id', order.id);
+
+            // Fetch payments
+            const { data: payments } = await supabase
+              .from('payments')
+              .select('*')
+              .eq('order_id', order.id);
+
+            // Fetch product snapshots for items
+            const itemsWithSnapshots = await Promise.all(
+              (orderItems || []).map(async (item) => {
+                const { data: snapshots } = await supabase
+                  .from('order_product_snapshots')
+                  .select('*')
+                  .eq('order_item_id', item.id);
+
+                return {
+                  ...item,
+                  order_product_snapshots: snapshots || []
+                };
+              })
+            );
+
+            return {
+              ...order,
+              profiles: profileData || null,
+              order_items: itemsWithSnapshots || [],
+              order_calculations: orderCalculations || [],
+              payments: payments || []
+            };
+          } catch (itemError) {
+            console.error(`Error enriching order ${order.id}:`, itemError);
+            return {
+              ...order,
+              profiles: null,
+              order_items: [],
+              order_calculations: [],
+              payments: []
+            };
+          }
+        })
+      );
+
+      console.log('Enriched orders:', enrichedOrders.length);
+
+      // Calculate statistics
+      const stats = calculateOrderStatistics(enrichedOrders);
       setOrderStats(stats);
-      setOrders(ordersData || []);
+      setOrders(enrichedOrders as Order[]);
 
-      // Validate order calculations
-      await validateOrderCalculations(ordersData || []);
-
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching orders:', error);
+      setError(error.message || 'Failed to fetch orders. Please try again.');
+      setOrders([]);
     } finally {
       setLoading(false);
     }
   };
 
   const calculateOrderStatistics = (ordersData: any[]) => {
+    if (!ordersData || ordersData.length === 0) {
+      return {
+        total: 0,
+        pending: 0,
+        processing: 0,
+        completed: 0,
+        cancelled: 0,
+        totalRevenue: 0,
+        averageOrder: 0,
+        revenueChange: 0,
+        orderGrowth: 0
+      };
+    }
+
     const stats = ordersData.reduce((acc, order) => {
       // Count by status
-      acc[order.status] = (acc[order.status] || 0) + 1;
+      const status = order.status || 'pending';
+      acc[status] = (acc[status] || 0) + 1;
       acc.total++;
 
-      // Calculate revenue using order_calculations if available
+      // Calculate revenue
       const calculation = order.order_calculations?.[0];
       const orderTotal = calculation?.total_amount || order.total || 0;
-      acc.totalRevenue += orderTotal;
+      acc.totalRevenue += Number(orderTotal);
 
       return acc;
     }, { 
@@ -139,30 +264,6 @@ const Orders = () => {
       revenueChange: 15.2, // Calculate from previous period
       orderGrowth: 8.5 // Calculate from previous period
     };
-  };
-
-  const validateOrderCalculations = async (ordersData: any[]) => {
-    for (const order of ordersData) {
-      const calculation = order.order_calculations?.[0];
-      if (!calculation) continue;
-
-      // Validate calculation accuracy
-      const itemsTotal = order.order_items.reduce((sum: number, item: any) => {
-        return sum + (item.quantity * item.price);
-      }, 0);
-
-      const expectedTax = itemsTotal * (calculation.tax_rate / 100);
-      const expectedTotal = itemsTotal + expectedTax - (calculation.discount_amount || 0) + (calculation.shipping_fee || 0);
-
-      // Check for discrepancies (allow for small rounding differences)
-      if (Math.abs(expectedTotal - calculation.total_amount) > 0.01) {
-        console.warn(`Order ${order.id} has calculation discrepancy:`, {
-          expected: expectedTotal,
-          actual: calculation.total_amount,
-          difference: Math.abs(expectedTotal - calculation.total_amount)
-        });
-      }
-    }
   };
 
   const getDateRange = () => {
@@ -188,12 +289,11 @@ const Orders = () => {
           endDate: customEndDate ? new Date(customEndDate) : now,
         };
       default:
-        return { startDate: start, endDate: now };
+        return { startDate: null, endDate: null };
     }
   };
 
   const handleStatusChange = async (orderId: string, newStatus: string) => {
-    setLoading(true);
     try {
       const { error } = await supabase
         .from('orders')
@@ -202,15 +302,21 @@ const Orders = () => {
 
       if (error) throw error;
       
-      // Create audit log
-      await supabase.from('order_audit_logs').insert({
-        order_id: orderId,
-        changed_by: (await supabase.auth.getUser()).data.user?.id,
-        change_type: 'status_updated',
-        new_values: { status: newStatus },
-        reason: 'Admin status update'
-      });
+      // Create audit log if table exists
+      try {
+        const { data: user } = await supabase.auth.getUser();
+        await supabase.from('order_audit_logs').insert({
+          order_id: orderId,
+          changed_by: user.user?.id,
+          change_type: 'status_updated',
+          new_values: { status: newStatus },
+          reason: 'Admin status update'
+        });
+      } catch (auditError) {
+        console.log('Audit log failed (table may not exist):', auditError);
+      }
 
+      // Refresh orders
       fetchOrders();
       
       // Show success feedback
@@ -219,11 +325,9 @@ const Orders = () => {
         orderElement.classList.add('bg-green-50');
         setTimeout(() => orderElement.classList.remove('bg-green-50'), 2000);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating order status:', error);
-      alert('Failed to update order status. Please try again.');
-    } finally {
-      setLoading(false);
+      alert(`Failed to update order status: ${error.message}`);
     }
   };
 
@@ -231,6 +335,7 @@ const Orders = () => {
     const { startDate, endDate } = getDateRange();
     
     const filteredOrders = orders.filter(order => {
+      if (!startDate || !endDate) return true;
       const orderDate = new Date(order.created_at);
       return orderDate >= startDate && orderDate <= endDate;
     });
@@ -238,7 +343,7 @@ const Orders = () => {
     if (format === 'csv') {
       const csvContent = [
         'PENCHIC FARM - COMPREHENSIVE ORDER REPORT',
-        `Period: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`,
+        `Period: ${startDate?.toLocaleDateString() || 'All time'} to ${endDate?.toLocaleDateString() || 'Present'}`,
         `Generated: ${new Date().toLocaleString()}`,
         '',
         // Headers
@@ -246,42 +351,28 @@ const Orders = () => {
           'Order ID',
           'Date',
           'Customer Email',
-          'Customer Role',
           'Status',
           'Items Count',
-          'Subtotal (KES)',
-          'Tax Amount (KES)',
-          'Discount (KES)',
           'Total (KES)',
           'Payment Method',
           'Payment Status'
         ].join(','),
         // Data rows
-        ...filteredOrders.map(order => {
-          const calculation = order.order_calculations?.[0];
-          return [
-            order.id,
-            new Date(order.created_at).toLocaleDateString(),
-            order.profiles?.email || 'N/A',
-            order.profiles?.role || 'N/A',
-            order.status,
-            order.order_items?.length || 0,
-            calculation?.subtotal?.toFixed(2) || '0.00',
-            calculation?.tax_amount?.toFixed(2) || '0.00',
-            calculation?.discount_amount?.toFixed(2) || '0.00',
-            calculation?.total_amount?.toFixed(2) || order.total?.toFixed(2) || '0.00',
-            order.payments?.[0]?.payment_method?.toUpperCase() || 'N/A',
-            order.payments?.[0]?.status?.toUpperCase() || 'N/A'
-          ].join(',');
-        }),
+        ...filteredOrders.map(order => [
+          order.id,
+          new Date(order.created_at).toLocaleDateString(),
+          order.profiles?.email || 'N/A',
+          order.status,
+          order.order_items?.length || 0,
+          (order.order_calculations?.[0]?.total_amount || order.total || 0).toFixed(2),
+          order.payments?.[0]?.payment_method?.toUpperCase() || 'N/A',
+          order.payments?.[0]?.status?.toUpperCase() || 'N/A'
+        ].join(',')),
         '',
         // Summary
         `Total Orders,${filteredOrders.length}`,
         `Total Revenue,KES ${orderStats.totalRevenue.toFixed(2)}`,
-        `Average Order Value,KES ${orderStats.averageOrder.toFixed(2)}`,
-        `Completed Orders,${orderStats.completed}`,
-        `Pending Orders,${orderStats.pending}`,
-        `Processing Orders,${orderStats.processing}`
+        `Average Order Value,KES ${orderStats.averageOrder.toFixed(2)}`
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -339,6 +430,33 @@ const Orders = () => {
       <AdminLayout title="Orders Management" subtitle="Comprehensive order tracking and reporting">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+          <span className="ml-4 text-lg text-neutral-600">Loading orders...</span>
+        </div>
+      </AdminLayout>
+    );
+  }
+
+  if (error) {
+    return (
+      <AdminLayout title="Orders Management" subtitle="Comprehensive order tracking and reporting">
+        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
+          <div className="flex items-center gap-3 mb-4">
+            <AlertCircle className="w-8 h-8 text-red-600" />
+            <h3 className="text-lg font-semibold text-red-900">Error Loading Orders</h3>
+          </div>
+          <p className="text-red-700 mb-4">{error}</p>
+          <div className="space-y-2 text-sm text-red-600 mb-4">
+            <p>• Check if the 'orders' table exists in your database</p>
+            <p>• Verify your database connection</p>
+            <p>• Ensure you have the correct permissions</p>
+            <p>• Check the browser console for more details</p>
+          </div>
+          <button
+            onClick={() => fetchOrders()}
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+          >
+            Retry
+          </button>
         </div>
       </AdminLayout>
     );
@@ -347,6 +465,15 @@ const Orders = () => {
   return (
     <AdminLayout title="Orders Management" subtitle="Comprehensive order tracking and reporting">
       <div className="space-y-6">
+        {/* Debug Info (remove in production) */}
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+          <p className="font-medium text-blue-900">Debug Info:</p>
+          <p className="text-blue-800">Total orders loaded: {orders.length}</p>
+          <p className="text-blue-800">Filtered orders: {filteredOrders.length}</p>
+          <p className="text-blue-800">Current filter: {filter}</p>
+          <p className="text-blue-800">Search term: "{searchTerm}"</p>
+        </div>
+
         {/* Enhanced Header with Export Options */}
         <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
           <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
@@ -364,18 +491,11 @@ const Orders = () => {
                 Export CSV
               </button>
               <button
-                onClick={() => exportReport('excel')}
+                onClick={() => fetchOrders()}
                 className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
               >
-                <FileText className="w-4 h-4" />
-                Export Excel
-              </button>
-              <button
-                onClick={() => exportReport('pdf')}
-                className="flex items-center gap-2 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
-              >
-                <FileText className="w-4 h-4" />
-                Export PDF
+                <RefreshCcw className="w-4 h-4" />
+                Refresh
               </button>
             </div>
           </div>
@@ -410,6 +530,7 @@ const Orders = () => {
               onChange={(e) => setReportPeriod(e.target.value)}
               className="px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
             >
+              <option value="all">All Time</option>
               <option value="daily">Today</option>
               <option value="weekly">Last 7 Days</option>
               <option value="monthly">Last 30 Days</option>
@@ -458,7 +579,7 @@ const Orders = () => {
           </AnimatePresence>
         </div>
 
-        {/* Enhanced Stats Cards with Data Visualization */}
+        {/* Enhanced Stats Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           {/* Total Revenue */}
           <motion.div
@@ -535,14 +656,17 @@ const Orders = () => {
           </motion.div>
         </div>
 
-        {/* Enhanced Orders List with Expandable Details */}
+        {/* Orders List */}
         <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
           <div className="p-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="text-xl font-bold text-neutral-900">Order Details</h3>
               <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setSortBy('created_at')}
+                  onClick={() => {
+                    setSortBy('created_at');
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                  }}
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
                     sortBy === 'created_at' ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
@@ -554,7 +678,10 @@ const Orders = () => {
                   )}
                 </button>
                 <button
-                  onClick={() => setSortBy('total')}
+                  onClick={() => {
+                    setSortBy('total');
+                    setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+                  }}
                   className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
                     sortBy === 'total' ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
@@ -564,12 +691,6 @@ const Orders = () => {
                   {sortBy === 'total' && (
                     sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
                   )}
-                </button>
-                <button
-                  onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
-                  className="p-2 bg-neutral-100 hover:bg-neutral-200 rounded-lg transition-colors"
-                >
-                  {sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />}
                 </button>
               </div>
             </div>
@@ -629,7 +750,7 @@ const Orders = () => {
                           <div className="text-right">
                             <p className="text-sm text-neutral-500">Total Amount</p>
                             <p className="text-2xl font-bold text-neutral-900">
-                              KES {(calculation?.total_amount || order.total).toLocaleString('en-KE')}
+                              KES {(calculation?.total_amount || order.total || 0).toLocaleString('en-KE')}
                             </p>
                           </div>
                           
@@ -666,61 +787,71 @@ const Orders = () => {
                           className="border-t border-neutral-200"
                         >
                           <div className="p-6 space-y-6">
-                            {/* Order Items with Historical Data */}
+                            {/* Order Items */}
                             <div>
                               <h4 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
                                 <Package2 className="w-5 h-5" />
-                                Order Items (Historical Data Preserved)
+                                Order Items ({order.order_items?.length || 0})
                               </h4>
-                              <div className="overflow-x-auto">
-                                <table className="w-full">
-                                  <thead>
-                                    <tr className="border-b border-neutral-200">
-                                      <th className="text-left py-3 px-4 font-medium text-neutral-700">Product</th>
-                                      <th className="text-center py-3 px-4 font-medium text-neutral-700">Qty</th>
-                                      <th className="text-right py-3 px-4 font-medium text-neutral-700">Unit Price</th>
-                                      <th className="text-right py-3 px-4 font-medium text-neutral-700">Total</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody className="divide-y divide-neutral-100">
-                                    {order.order_items.map((item: any) => {
-                                      const snapshot = item.order_product_snapshots?.[0];
-                                      const productName = snapshot?.product_name || 'Product Name Not Available';
-                                      const priceAtTime = snapshot?.price_at_time || item.price;
-                                      
-                                      return (
-                                        <tr key={item.id} className="hover:bg-neutral-50">
-                                          <td className="py-3 px-4">
-                                            <div className="flex items-center gap-3">
-                                              {snapshot?.product_image_url && (
-                                                <img
-                                                  src={snapshot.product_image_url}
-                                                  alt={productName}
-                                                  className="w-10 h-10 object-cover rounded"
-                                                />
-                                              )}
-                                              <div>
-                                                <p className="font-medium text-neutral-900">{productName}</p>
-                                                <p className="text-sm text-neutral-500">
-                                                  {snapshot?.product_category || 'N/A'}
-                                                  {snapshot?.variant_size && ` - ${snapshot.variant_size}`}
-                                                </p>
+                              {order.order_items && order.order_items.length > 0 ? (
+                                <div className="overflow-x-auto">
+                                  <table className="w-full">
+                                    <thead>
+                                      <tr className="border-b border-neutral-200">
+                                        <th className="text-left py-3 px-4 font-medium text-neutral-700">Product</th>
+                                        <th className="text-center py-3 px-4 font-medium text-neutral-700">Qty</th>
+                                        <th className="text-right py-3 px-4 font-medium text-neutral-700">Unit Price</th>
+                                        <th className="text-right py-3 px-4 font-medium text-neutral-700">Total</th>
+                                      </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-neutral-100">
+                                      {order.order_items.map((item: any) => {
+                                        const snapshot = item.order_product_snapshots?.[0];
+                                        const productName = snapshot?.product_name || `Item #${item.id.slice(0, 8)}`;
+                                        const priceAtTime = snapshot?.price_at_time || item.price || 0;
+                                        
+                                        return (
+                                          <tr key={item.id} className="hover:bg-neutral-50">
+                                            <td className="py-3 px-4">
+                                              <div className="flex items-center gap-3">
+                                                {snapshot?.product_image_url && (
+                                                  <img
+                                                    src={snapshot.product_image_url}
+                                                    alt={productName}
+                                                    className="w-10 h-10 object-cover rounded"
+                                                    onError={(e) => {
+                                                      (e.target as HTMLImageElement).style.display = 'none';
+                                                    }}
+                                                  />
+                                                )}
+                                                <div>
+                                                  <p className="font-medium text-neutral-900">{productName}</p>
+                                                  <p className="text-sm text-neutral-500">
+                                                    {snapshot?.product_category || 'N/A'}
+                                                    {snapshot?.variant_size && ` - ${snapshot.variant_size}`}
+                                                  </p>
+                                                </div>
                                               </div>
-                                            </div>
-                                          </td>
-                                          <td className="text-center py-3 px-4 font-medium">{item.quantity}</td>
-                                          <td className="text-right py-3 px-4 font-medium">
-                                            KES {priceAtTime.toLocaleString('en-KE')}
-                                          </td>
-                                          <td className="text-right py-3 px-4 font-bold">
-                                            KES {(item.quantity * priceAtTime).toLocaleString('en-KE')}
-                                          </td>
-                                        </tr>
-                                      );
-                                    })}
-                                  </tbody>
-                                </table>
-                              </div>
+                                            </td>
+                                            <td className="text-center py-3 px-4 font-medium">{item.quantity}</td>
+                                            <td className="text-right py-3 px-4 font-medium">
+                                              KES {priceAtTime.toLocaleString('en-KE')}
+                                            </td>
+                                            <td className="text-right py-3 px-4 font-bold">
+                                              KES {(item.quantity * priceAtTime).toLocaleString('en-KE')}
+                                            </td>
+                                          </tr>
+                                        );
+                                      })}
+                                    </tbody>
+                                  </table>
+                                </div>
+                              ) : (
+                                <div className="text-center py-8 text-neutral-500">
+                                  <Package2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                                  <p>No items found for this order</p>
+                                </div>
+                              )}
                             </div>
 
                             {/* Detailed Calculations */}
@@ -801,11 +932,23 @@ const Orders = () => {
                 );
               })}
 
-              {filteredOrders.length === 0 && (
+              {filteredOrders.length === 0 && !loading && (
                 <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
                   <Package2 className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
                   <h3 className="text-lg font-semibold mb-2 text-neutral-900">No Orders Found</h3>
-                  <p className="text-neutral-600">No orders match your current filters</p>
+                  <p className="text-neutral-600 mb-4">
+                    {orders.length === 0 
+                      ? "No orders exist in the database yet" 
+                      : "No orders match your current filters"}
+                  </p>
+                  {orders.length === 0 && (
+                    <div className="text-sm text-neutral-500 space-y-1">
+                      <p>Possible reasons:</p>
+                      <p>• No orders have been placed yet</p>
+                      <p>• Orders table is empty</p>
+                      <p>• Database connection issues</p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
