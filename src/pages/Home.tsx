@@ -1,5 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
+import { Link } from 'react-router-dom';
+import Typed from 'typed.js';
+import { supabase } from '../lib/supabase';
+import ScrollReveal from '../components/animations/ScrollReveal';
 import {
   Wheat,
   MapPin,
@@ -12,12 +16,7 @@ import {
   Beef,
   Fish,
   ChevronLeft,
-  ChevronRight,
-  ArrowRight,
-  Star,
-  Shield,
-  Heart,
-  Zap
+  ChevronRight
 } from 'lucide-react';
 
 const heroImages = [
@@ -32,46 +31,14 @@ const categories = [
     title: 'Poultry Feed',
     description: 'Complete nutrition for chickens, ducks, and other poultry',
     icon: Egg,
-    link: '/shop?category=poultry',
-    color: 'from-amber-400 to-orange-500',
-    bgColor: 'bg-gradient-to-br from-amber-50 to-orange-50',
-    features: ['High Protein', 'Calcium Rich', 'Growth Formula'],
-    image: 'https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=400',
-    popular: true
+    link: '/shop?category=poultry'
   },
   {
     title: 'Cattle Feed',
     description: 'High-quality feed for dairy and beef cattle',
     icon: Beef,
-    link: '/shop?category=cattle',
-    color: 'from-green-500 to-emerald-600',
-    bgColor: 'bg-gradient-to-br from-green-50 to-emerald-50',
-    features: ['Energy Dense', 'Digestible Fiber', 'Mineral Rich'],
-    image: 'https://images.unsplash.com/photo-1560114928-40f1f1eb26a0?auto=format&fit=crop&q=80&w=400',
-    popular: false
+    link: '/shop?category=cattle'
   },
-  {
-    title: 'Fish Feed',
-    description: 'Specialized aquaculture feed for healthy fish growth',
-    icon: Fish,
-    link: '/shop?category=fish',
-    color: 'from-blue-500 to-cyan-600',
-    bgColor: 'bg-gradient-to-br from-blue-50 to-cyan-50',
-    features: ['Water Stable', 'High Nutrition', 'Growth Optimized'],
-    image: 'https://images.unsplash.com/photo-1544943910-4c1dc44aab44?auto=format&fit=crop&q=80&w=400',
-    popular: false
-  },
-  {
-    title: 'Premium Mix',
-    description: 'Our signature blend for optimal animal health',
-    icon: Star,
-    link: '/shop?category=premium',
-    color: 'from-purple-500 to-pink-600',
-    bgColor: 'bg-gradient-to-br from-purple-50 to-pink-50',
-    features: ['Multi-Species', 'Premium Quality', 'Enhanced Formula'],
-    image: 'https://images.unsplash.com/photo-1500382017468-9049fed747ef?auto=format&fit=crop&q=80&w=400',
-    popular: false
-  }
 ];
 
 export default function Home() {
@@ -81,21 +48,15 @@ export default function Home() {
   const [featuredProducts, setFeaturedProducts] = useState([]);
 
   useEffect(() => {
-    // Simulated typing effect
-    const text = 'PENCHIC FARM FEEDS';
-    let index = 0;
-    const interval = setInterval(() => {
-      if (index <= text.length) {
-        if (typedRef.current) {
-          typedRef.current.textContent = text.slice(0, index);
-        }
-        index++;
-      } else {
-        clearInterval(interval);
-      }
-    }, 50);
+    const typed = new Typed(typedRef.current, {
+      strings: ['PENCHIC FARM FEEDS'],
+      typeSpeed: 50,
+      showCursor: false,
+    });
 
-    return () => clearInterval(interval);
+    return () => {
+      typed.destroy();
+    };
   }, []);
 
   useEffect(() => {
@@ -109,27 +70,20 @@ export default function Home() {
   }, []);
 
   useEffect(() => {
-    // Simulate featured products data
-    setFeaturedProducts([
-      {
-        id: 1,
-        name: "Premium Chicken Feed",
-        description: "High-protein formula for optimal egg production",
-        price: 2500,
-        category: "Poultry",
-        stock: 50,
-        image_url: "https://images.unsplash.com/photo-1548550023-2bdb3c5beed7?auto=format&fit=crop&q=80&w=400"
-      },
-      {
-        id: 2,
-        name: "Cattle Growth Formula",
-        description: "Complete nutrition for healthy cattle development",
-        price: 3200,
-        category: "Cattle",
-        stock: 30,
-        image_url: "https://images.unsplash.com/photo-1560114928-40f1f1eb26a0?auto=format&fit=crop&q=80&w=400"
+    const fetchProducts = async () => {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .gt('stock', 0)
+        .order('created_at', { ascending: false })
+        .limit(2);
+
+      if (!error && data) {
+        setFeaturedProducts(data);
       }
-    ]);
+    };
+
+    fetchProducts();
   }, []);
 
   const nextImage = () => {
@@ -302,145 +256,40 @@ export default function Home() {
         </div>
       </div>
 
-      {/* Enhanced Categories Section */}
-      <section className="py-24 bg-gradient-to-b from-slate-50 to-white relative overflow-hidden">
-        {/* Background decoration */}
-        <div className="absolute inset-0 bg-gradient-to-r from-green-50/50 to-blue-50/50" />
-        <div className="absolute top-20 left-10 w-32 h-32 bg-green-100 rounded-full blur-3xl opacity-30" />
-        <div className="absolute bottom-20 right-10 w-40 h-40 bg-blue-100 rounded-full blur-3xl opacity-30" />
-        
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
+      {/* Categories Section */}
+      <section className="py-20 bg-neutral-50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <ScrollReveal>
-            <div className="text-center mb-20">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="inline-flex items-center gap-2 bg-gradient-to-r from-green-100 to-blue-100 px-6 py-3 rounded-full mb-6"
-              >
-                <Wheat className="w-5 h-5 text-green-600" />
-                <span className="text-green-700 font-semibold">Premium Feed Solutions</span>
-              </motion.div>
-              <h2 className="text-5xl md:text-6xl font-bold bg-gradient-to-r from-slate-800 to-slate-600 bg-clip-text text-transparent mb-6">
-                Our Feed Categories
-              </h2>
-              <p className="text-xl text-slate-600 max-w-3xl mx-auto leading-relaxed">
-                Discover our comprehensive range of scientifically formulated feeds, 
-                designed to optimize nutrition and maximize your livestock's potential.
+            <div className="text-center mb-16">
+              <h2 className="text-4xl font-bold text-neutral-900 mb-4">Our Feed Categories</h2>
+              <p className="text-neutral-700 max-w-2xl mx-auto">
+                Quality nutrition for all your livestock needs
               </p>
             </div>
           </ScrollReveal>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
             {categories.map((category, index) => (
-              <motion.div
+              <ScrollReveal
                 key={category.title}
-                initial={{ opacity: 0, x: index % 2 === 0 ? -50 : 50 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: index * 0.15 }}
+                direction={index % 2 === 0 ? 'left' : 'right'}
+                delay={index * 0.1}
               >
-                <a href={category.link} className="group block">
+                <Link to={category.link}>
                   <motion.div
-                    whileHover={{ scale: 1.02, y: -5 }}
-                    whileTap={{ scale: 0.98 }}
-                    className="relative overflow-hidden rounded-3xl shadow-xl hover:shadow-2xl transition-all duration-500 bg-white border border-slate-100"
+                    whileHover={{ scale: 1.05 }}
+                    className="bg-white p-8 rounded-2xl shadow-lg hover:shadow-xl transition-all border border-neutral-200"
                   >
-                    {/* Popular badge */}
-                    {category.popular && (
-                      <div className="absolute top-6 right-6 z-20">
-                        <div className="flex items-center gap-1 bg-gradient-to-r from-yellow-400 to-orange-500 px-3 py-1 rounded-full text-white text-sm font-bold shadow-lg">
-                          <Star className="w-4 h-4 fill-current" />
-                          Popular
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="flex flex-col lg:flex-row h-full">
-                      {/* Image section */}
-                      <div className="relative lg:w-1/2 h-64 lg:h-auto overflow-hidden">
-                        <img
-                          src={category.image}
-                          alt={category.title}
-                          className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                        />
-                        <div className={`absolute inset-0 bg-gradient-to-br ${category.color} opacity-20 group-hover:opacity-30 transition-opacity duration-500`} />
-                        
-                        {/* Floating icon */}
-                        <div className="absolute top-6 left-6">
-                          <div className={`w-14 h-14 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center shadow-lg`}>
-                            <category.icon className="w-7 h-7 text-white drop-shadow-lg" />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Content section */}
-                      <div className={`lg:w-1/2 p-8 ${category.bgColor} flex flex-col justify-between`}>
-                        <div>
-                          <h3 className="text-3xl font-bold text-slate-900 mb-4 group-hover:text-slate-700 transition-colors">
-                            {category.title}
-                          </h3>
-                          <p className="text-slate-600 mb-6 leading-relaxed">
-                            {category.description}
-                          </p>
-
-                          {/* Features */}
-                          <div className="space-y-3 mb-6">
-                            {category.features.map((feature, featureIndex) => (
-                              <div key={featureIndex} className="flex items-center gap-3">
-                                <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${category.color}`} />
-                                <span className="text-slate-700 font-medium">{feature}</span>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* CTA Button */}
-                        <div className="flex items-center justify-between">
-                          <motion.div
-                            whileHover={{ x: 5 }}
-                            className={`inline-flex items-center gap-2 text-transparent bg-gradient-to-r ${category.color} bg-clip-text font-bold text-lg`}
-                          >
-                            Explore Range
-                            <ArrowRight className="w-5 h-5" />
-                          </motion.div>
-                          
-                          <div className="flex items-center gap-2 text-slate-500">
-                            <Shield className="w-4 h-4" />
-                            <span className="text-sm">Quality Assured</span>
-                          </div>
-                        </div>
-                      </div>
+                    <div className="bg-[#2B5741]/10 w-16 h-16 rounded-2xl flex items-center justify-center mb-6">
+                      <category.icon className="w-8 h-8 text-[#2B5741]" />
                     </div>
-
-                    {/* Hover glow effect */}
-                    <div className={`absolute inset-0 bg-gradient-to-r ${category.color} opacity-0 group-hover:opacity-5 transition-opacity duration-500 pointer-events-none`} />
+                    <h3 className="text-2xl font-bold text-neutral-900 mb-4">{category.title}</h3>
+                    <p className="text-neutral-700">{category.description}</p>
                   </motion.div>
-                </a>
-              </motion.div>
+                </Link>
+              </ScrollReveal>
             ))}
           </div>
-
-          {/* Bottom CTA */}
-          <ScrollReveal>
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
-              className="text-center"
-            >
-              <div className="inline-flex items-center gap-4 bg-white rounded-2xl p-6 shadow-lg border border-slate-200">
-                <div className="flex items-center gap-2">
-                  <Heart className="w-6 h-6 text-red-500" />
-                  <span className="text-slate-700 font-semibold">Trusted by 1000+ farmers</span>
-                </div>
-                <div className="w-px h-8 bg-slate-300" />
-                <div className="flex items-center gap-2">
-                  <Zap className="w-6 h-6 text-yellow-500" />
-                  <span className="text-slate-700 font-semibold">Fast delivery guaranteed</span>
-                </div>
-              </div>
-            </motion.div>
-          </ScrollReveal>
         </div>
       </section>
 
@@ -453,21 +302,22 @@ export default function Home() {
                 <h2 className="text-4xl font-bold text-neutral-900">Featured Products</h2>
                 <p className="text-neutral-700 mt-2">Our best-selling feed solutions</p>
               </div>
-              <button
-                onClick={() => window.open('/shop', '_blank')}
+              <Link
+                to="/shop"
                 className="text-[#2B5741] hover:text-[#1A3F2E] font-medium flex items-center"
               >
                 View all products
                 <ExternalLink className="ml-2 w-4 h-4" />
-              </button>
+              </Link>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               {featuredProducts.map((product, index) => (
-                <div
+                <ScrollReveal
                   key={product.id}
+                  direction={index % 2 === 0 ? 'left' : 'right'}
                 >
-                  <a href={`/product/${product.id}`}>
+                  <Link to={`/product/${product.id}`}>
                     <motion.div
                       whileHover={{ scale: 1.02 }}
                       className="bg-white rounded-2xl overflow-hidden shadow-lg hover:shadow-xl transition-all border border-neutral-200"
@@ -495,8 +345,8 @@ export default function Home() {
                         </div>
                       </div>
                     </motion.div>
-                  </a>
-                </div>
+                  </Link>
+                </ScrollReveal>
               ))}
             </div>
           </div>
@@ -514,13 +364,13 @@ export default function Home() {
               Visit our store or contact us to learn more about our premium feed products.
             </p>
             <div className="flex flex-col sm:flex-row justify-center gap-4">
-              <button
-                onClick={() => window.open('/shop', '_blank')}
+              <Link
+                to="/shop"
                 className="inline-flex items-center px-8 py-3 text-lg font-medium text-[#2B5741] bg-[#D4A373] rounded-full hover:bg-[#C4946A] transition-colors"
               >
                 <Store className="mr-2 h-5 w-5" />
                 Visit Store
-              </button>
+              </Link>
               <button
                 onClick={() => setShowContact(true)}
                 className="inline-flex items-center px-8 py-3 text-lg font-medium text-white border-2 border-white rounded-full hover:bg-white hover:text-[#2B5741] transition-colors"
