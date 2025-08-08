@@ -40,6 +40,43 @@ export interface Discount {
   end_date: string;
 }
 
+export interface DiscountCampaign {
+  id: string;
+  name: string;
+  description?: string;
+  type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle';
+  status: 'active' | 'inactive' | 'expired';
+  start_date: string;
+  end_date: string;
+  created_by?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DiscountRule {
+  id: string;
+  campaign_id: string;
+  product_id: string;
+  discount_value: number;
+  minimum_quantity: number;
+  maximum_quantity?: number;
+  buy_quantity?: number;
+  get_quantity?: number;
+  maximum_usage_per_customer?: number;
+  maximum_total_usage?: number;
+  created_at: string;
+}
+
+export interface DiscountUsage {
+  id: string;
+  campaign_id: string;
+  order_id: string;
+  user_id?: string;
+  discount_amount: number;
+  quantity_used: number;
+  created_at: string;
+}
+
 export interface Order {
   id: string;
   user_id: string;

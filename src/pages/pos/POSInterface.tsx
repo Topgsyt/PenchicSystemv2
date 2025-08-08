@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
+import { useDiscounts } from '../../hooks/useDiscounts';
+import DiscountBadge from '../../components/DiscountBadge';
 import {
   Search,
   Plus,
@@ -29,6 +31,7 @@ const POSInterface = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
   const [products, setProducts] = useState([]);
+  const [productsWithDiscounts, setProductsWithDiscounts] = useState([]);
   const [cart, setCart] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
@@ -42,6 +45,7 @@ const POSInterface = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTransaction, setLastTransaction] = useState(null);
+  const { getProductDiscount, applyDiscount } = useDiscounts();
 
   // Cart collapse state
   const [isCartCollapsed, setIsCartCollapsed] = useState(false);
@@ -55,6 +59,11 @@ const POSInterface = () => {
     fetchProducts();
   }, [user, navigate]);
 
+  useEffect(() => {
+    if (products.length > 0) {
+      loadProductDiscounts();
+    }
+  }, [products, user]);
   useEffect(() => {
     if (isFullscreen) {
       document.body.classList.add('pos-fullscreen-mode');
@@ -123,18 +132,64 @@ const POSInterface = () => {
     }
   };
 
-  const addToCart = (product) => {
+  const loadProductDiscounts = async () => {
+    try {
+      const productsWithDiscountInfo = await Promise.all(
+        products.map(async (product) => {
+          const discountInfo = await getProductDiscount(product.id, 1, user?.id);
+          
+          if (discountInfo) {
+            return {
+              ...product,
+              discount: {
+                campaign_id: discountInfo.campaign_id,
+                type: discountInfo.discount_type,
+                value: discountInfo.savings_percentage,
+                original_price: discountInfo.original_price,
+                discounted_price: discountInfo.final_price,
+                savings: discountInfo.discount_amount,
+                campaign_name: discountInfo.offer_description.split(':')[0]
+              }
+            };
+          }
+          
+          return product;
+        })
+      );
+      
+      setProductsWithDiscounts(productsWithDiscountInfo);
+    } catch (error) {
+      console.error('Error loading discounts:', error);
+      setProductsWithDiscounts(products);
+    }
+  };
+  const addToCart = async (product) => {
+    // Check for applicable discounts
+    const discountInfo = await getProductDiscount(product.id, 1, user?.id);
+    
+    const productWithDiscount = discountInfo ? {
+      ...product,
+      price: discountInfo.final_price,
+      original_price: product.price,
+      discount: {
+        campaign_id: discountInfo.campaign_id,
+        amount: discountInfo.discount_amount,
+        type: discountInfo.discount_type,
+        description: discountInfo.offer_description
+      }
+    } : product;
+
     setCart((prevCart) => {
-      const existingItem = prevCart.find((item) => item.id === product.id);
+      const existingItem = prevCart.find((item) => item.id === productWithDiscount.id);
       if (existingItem) {
-        if (existingItem.quantity >= product.stock) {
+        if (existingItem.quantity >= productWithDiscount.stock) {
           return prevCart;
         }
         return prevCart.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+          item.id === productWithDiscount.id ? { ...item, quantity: item.quantity + 1 } : item
         );
       }
-      return [...prevCart, { ...product, quantity: 1 }];
+      return [...prevCart, { ...productWithDiscount, quantity: 1 }];
     });
   };
 
@@ -158,16 +213,23 @@ const POSInterface = () => {
   };
 
   const calculateTotals = () => {
-    const subtotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
+    const subtotal = cart.reduce((sum, item) => sum + (item.original_price || item.price) * item.quantity, 0);
+    const discountTotal = cart.reduce((sum, item) => {
+      if (item.discount) {
+        return sum + item.discount.amount * item.quantity;
+      }
+      return sum;
+    }, 0);
+    const discountedSubtotal = subtotal - discountTotal;
     const tax = subtotal * 0.16; // 16% VAT
-    const total = subtotal + tax;
-    return { subtotal, tax, total };
+    const total = discountedSubtotal + tax;
+    return { subtotal, discountTotal, discountedSubtotal, tax, total };
   };
 
   const handlePayment = async () => {
     if (!cart.length) return;
 
-    const { total } = calculateTotals();
+    const { total, discountTotal } = calculateTotals();
 
     if (paymentMethod === 'cash' && Number(cashAmount) < total) {
       alert(`Cash amount should be at least KES ${total.toFixed(2)}`);
@@ -199,6 +261,18 @@ const POSInterface = () => {
       const { error: itemsError } = await supabase.from('order_items').insert(orderItems);
       if (itemsError) throw itemsError;
 
+      // Apply discounts to order
+      for (const item of cart) {
+        if (item.discount) {
+          await applyDiscount(
+            item.discount.campaign_id,
+            order.id,
+            user.id,
+            item.discount.amount * item.quantity,
+            item.quantity
+          );
+        }
+      }
       const { error: transactionError } = await supabase.from('pos_transactions').insert([
         {
           session_id: sessionId,
@@ -206,7 +280,7 @@ const POSInterface = () => {
           user_id: user.id,
           transaction_type: 'sale',
           payment_method: paymentMethod,
-          subtotal: calculateTotals().subtotal,
+          subtotal: calculateTotals().discountedSubtotal,
           tax_amount: calculateTotals().tax,
           total_amount: total,
         },
@@ -238,7 +312,7 @@ const POSInterface = () => {
   };
 
   const categories = ['all', ...new Set(products.map(p => p.category))];
-  const filteredProducts = products.filter(
+  const filteredProducts = productsWithDiscounts.filter(
     (product) => {
       const matchesSearch = product.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                           product.category.toLowerCase().includes(searchTerm.toLowerCase());
@@ -370,6 +444,17 @@ const POSInterface = () => {
                       ${product.stock <= 0 ? 'opacity-50 cursor-not-allowed' : ''}
                     `}
                   >
+                    {/* Discount Badge */}
+                    {product.discount && viewMode === 'grid' && (
+                      <div className="absolute top-2 left-2 z-10">
+                        <DiscountBadge
+                          type={product.discount.type}
+                          value={product.discount.value}
+                          size="small"
+                        />
+                      </div>
+                    )}
+
                     {viewMode === 'grid' ? (
                       <>
                         <div className="aspect-square bg-neutral-100 rounded-lg mb-2 sm:mb-3 overflow-hidden">
@@ -383,9 +468,25 @@ const POSInterface = () => {
                           <h3 className="font-medium text-neutral-900 text-xs sm:text-sm mb-1 line-clamp-2">
                             {product.name}
                           </h3>
-                          <p className="text-primary font-bold text-xs sm:text-sm">
-                            KES {product.price.toLocaleString()}
-                          </p>
+                          {product.discount ? (
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-1">
+                                <span className="text-xs line-through text-neutral-500">
+                                  KES {product.discount.original_price.toLocaleString()}
+                                </span>
+                                <span className="text-primary font-bold text-xs sm:text-sm">
+                                  KES {product.discount.discounted_price.toLocaleString()}
+                                </span>
+                              </div>
+                              <p className="text-green-600 font-medium text-xs">
+                                Save KES {product.discount.savings.toLocaleString()}
+                              </p>
+                            </div>
+                          ) : (
+                            <p className="text-primary font-bold text-xs sm:text-sm">
+                              KES {product.price.toLocaleString()}
+                            </p>
+                          )}
                           <p className={`text-xs mt-1 ${
                             product.stock > 10 ? 'text-green-600' : 
                             product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
@@ -396,6 +497,15 @@ const POSInterface = () => {
                       </>
                     ) : (
                       <>
+                        {product.discount && (
+                          <div className="absolute top-2 right-2">
+                            <DiscountBadge
+                              type={product.discount.type}
+                              value={product.discount.value}
+                              size="small"
+                            />
+                          </div>
+                        )}
                         <div className="w-16 h-16 bg-neutral-100 rounded-lg overflow-hidden flex-shrink-0">
                           <img
                             src={product.image_url}
@@ -407,7 +517,23 @@ const POSInterface = () => {
                           <h3 className="font-medium text-neutral-900 truncate">{product.name}</h3>
                           <p className="text-sm text-neutral-500">{product.category}</p>
                           <div className="flex items-center justify-between mt-1">
-                            <p className="text-primary font-bold">KES {product.price.toFixed(2)}</p>
+                            {product.discount ? (
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm line-through text-neutral-500">
+                                    KES {product.discount.original_price.toFixed(2)}
+                                  </span>
+                                  <span className="text-primary font-bold">
+                                    KES {product.discount.discounted_price.toFixed(2)}
+                                  </span>
+                                </div>
+                                <span className="text-green-600 font-medium text-xs">
+                                  Save KES {product.discount.savings.toFixed(2)}
+                                </span>
+                              </div>
+                            ) : (
+                              <p className="text-primary font-bold">KES {product.price.toFixed(2)}</p>
+                            )}
                             <p className={`text-xs ${
                               product.stock > 10 ? 'text-green-600' : 
                               product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
@@ -531,10 +657,40 @@ const POSInterface = () => {
                     animate={{ opacity: 1, y: 0 }}
                     className="bg-neutral-50 rounded-lg p-2 sm:p-3"
                   >
+                    {/* Discount Badge for Cart Items */}
+                    {item.discount && (
+                      <div className="absolute top-2 right-2">
+                        <DiscountBadge
+                          type={item.discount.type}
+                          value={item.discount.type === 'percentage' ? 
+                            ((item.discount.amount / (item.original_price * item.quantity)) * 100) : 
+                            item.discount.amount
+                          }
+                          size="small"
+                        />
+                      </div>
+                    )}
+
                     <div className="flex items-start justify-between mb-2">
                       <div className="flex-1 min-w-0">
                         <h3 className="font-medium text-neutral-900 text-xs sm:text-sm">{item.name}</h3>
-                        <p className="text-primary font-bold text-xs sm:text-sm">KES {item.price.toLocaleString()}</p>
+                        {item.discount ? (
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-1">
+                              <span className="text-xs line-through text-neutral-500">
+                                KES {(item.original_price || item.price).toLocaleString()}
+                              </span>
+                              <span className="text-primary font-bold text-xs sm:text-sm">
+                                KES {item.price.toLocaleString()}
+                              </span>
+                            </div>
+                            <p className="text-green-600 font-medium text-xs">
+                              {item.discount.description}
+                            </p>
+                          </div>
+                        ) : (
+                          <p className="text-primary font-bold text-xs sm:text-sm">KES {item.price.toLocaleString()}</p>
+                        )}
                       </div>
                       <button
                         onClick={() => removeFromCart(item.id)}
@@ -578,6 +734,16 @@ const POSInterface = () => {
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">Subtotal:</span>
                   <span className="font-medium">KES {calculateTotals().subtotal.toLocaleString()}</span>
+                </div>
+                {calculateTotals().discountTotal > 0 && (
+                  <div className="flex justify-between text-sm text-green-600">
+                    <span>Discount:</span>
+                    <span className="font-medium">-KES {calculateTotals().discountTotal.toLocaleString()}</span>
+                  </div>
+                )}
+                <div className="flex justify-between text-sm">
+                  <span className="text-neutral-600">After Discount:</span>
+                  <span className="font-medium">KES {calculateTotals().discountedSubtotal.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">Tax (16%):</span>
@@ -666,9 +832,27 @@ const POSInterface = () => {
 
               <div className="mb-6">
                 <div className="bg-neutral-50 rounded-lg p-4 mb-4">
-                  <div className="flex justify-between text-lg font-bold">
-                    <span>Total Amount:</span>
-                    <span>KES {calculateTotals().total.toLocaleString()}</span>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between">
+                      <span>Subtotal:</span>
+                      <span>KES {calculateTotals().subtotal.toLocaleString()}</span>
+                    </div>
+                    {calculateTotals().discountTotal > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span>Discount:</span>
+                        <span>-KES {calculateTotals().discountTotal.toLocaleString()}</span>
+                      </div>
+                    )}
+                    <div className="flex justify-between">
+                      <span>Tax (16%):</span>
+                      <span>KES {calculateTotals().tax.toLocaleString()}</span>
+                    </div>
+                    <div className="border-t border-neutral-200 pt-2">
+                      <div className="flex justify-between text-lg font-bold">
+                        <span>Total Amount:</span>
+                        <span>KES {calculateTotals().total.toLocaleString()}</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -860,6 +1044,18 @@ const POSInterface = () => {
                         <div key={index} className="grid grid-cols-12 gap-2 py-2 border-b border-neutral-100 last:border-b-0 items-center">
                           <div className="col-span-6">
                             <p className="font-semibold text-neutral-900 text-sm leading-tight">{item.name}</p>
+                            {item.discount && (
+                              <div className="flex items-center gap-1 mt-1">
+                                <DiscountBadge
+                                  type={item.discount.type}
+                                  value={item.discount.type === 'percentage' ? 
+                                    ((item.discount.amount / (item.original_price * item.quantity)) * 100) : 
+                                    item.discount.amount
+                                  }
+                                  size="small"
+                                />
+                              </div>
+                            )}
                             <p className="text-xs text-neutral-500 mt-0.5">Unit: KES {item.price.toLocaleString('en-KE')}</p>
                           </div>
                           <div className="col-span-2 text-center">
@@ -868,7 +1064,14 @@ const POSInterface = () => {
                             </span>
                           </div>
                           <div className="col-span-2 text-right">
-                            <p className="font-medium text-neutral-900 text-sm">KES {item.price.toLocaleString('en-KE')}</p>
+                            {item.discount ? (
+                              <div className="space-y-1">
+                                <p className="text-xs line-through text-neutral-500">KES {(item.original_price || item.price).toLocaleString('en-KE')}</p>
+                                <p className="font-medium text-neutral-900 text-sm">KES {item.price.toLocaleString('en-KE')}</p>
+                              </div>
+                            ) : (
+                              <p className="font-medium text-neutral-900 text-sm">KES {item.price.toLocaleString('en-KE')}</p>
+                            )}
                           </div>
                           <div className="col-span-2 text-right">
                             <p className="font-bold text-neutral-900">KES {(item.price * item.quantity).toLocaleString('en-KE')}</p>
@@ -884,6 +1087,16 @@ const POSInterface = () => {
                       <div className="flex justify-between items-center py-1">
                         <span className="text-sm font-medium text-neutral-600">Subtotal</span>
                         <span className="font-semibold text-neutral-900">KES {lastTransaction.totals.subtotal.toLocaleString('en-KE')}</span>
+                      </div>
+                      {lastTransaction.totals.discountTotal > 0 && (
+                        <div className="flex justify-between items-center py-1">
+                          <span className="text-sm font-medium text-green-600">Total Discount</span>
+                          <span className="font-semibold text-green-600">-KES {lastTransaction.totals.discountTotal.toLocaleString('en-KE')}</span>
+                        </div>
+                      )}
+                      <div className="flex justify-between items-center py-1">
+                        <span className="text-sm font-medium text-neutral-600">After Discount</span>
+                        <span className="font-semibold text-neutral-900">KES {lastTransaction.totals.discountedSubtotal.toLocaleString('en-KE')}</span>
                       </div>
                       <div className="flex justify-between items-center py-1">
                         <span className="text-sm font-medium text-neutral-600">Tax (16% VAT)</span>

@@ -10,6 +10,7 @@ import Checkout from './pages/Checkout';
 import AdminDashboard from './pages/admin/Dashboard';
 import AdminProducts from './pages/admin/Products';
 import AdminOrders from './pages/admin/Orders';
+import DiscountsOffers from './pages/admin/DiscountsOffers';
 import StockManagement from './pages/admin/StockManagement';
 import AnalyticsDashboard from './pages/admin/AnalyticsDashboard';
 import UserManagement from './pages/admin/UserManagement';
@@ -189,6 +190,7 @@ const App: React.FC = () => {
             <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/admin/products" element={<AdminRoute><AdminProducts /></AdminRoute>} />
             <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+            <Route path="/admin/discounts" element={<AdminRoute><DiscountsOffers /></AdminRoute>} />
             <Route path="/admin/analytics" element={<AdminRoute><AnalyticsDashboard /></AdminRoute>} />
             <Route path="/admin/users" element={<AdminRoute><UserManagement /></AdminRoute>} />
             <Route path="/admin/settings" element={<AdminRoute><Settings /></AdminRoute>} />
