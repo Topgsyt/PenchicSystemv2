@@ -155,7 +155,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           {hasDiscount && product.discount.type !== 'buy_x_get_y' && (
             <div className="text-right">
               <span className="text-xs text-green-600 font-medium">
-                {((product.discount.savings / originalPrice) * 100).toFixed(0)}% savings
+                {((Number(product.discount.savings) / originalPrice) * 100).toFixed(0)}% savings
               </span>
             </div>
           )}

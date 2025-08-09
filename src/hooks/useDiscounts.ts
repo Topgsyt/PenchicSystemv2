@@ -28,20 +28,77 @@ export const useDiscounts = (): UseDiscountsReturn => {
     quantity: number, 
     userId?: string
   ): Promise<DiscountInfo | null> => {
+    if (!productId || quantity <= 0) {
+      return null;
+    }
+    
     setLoading(true);
     setError(null);
 
     try {
-      const { data, error } = await supabase.rpc('calculate_product_discount', {
-        p_product_id: productId,
-        p_quantity: quantity,
-        p_user_id: userId || null
-      });
+      // Check if the RPC function exists, if not, return null
+      const { data, error } = await supabase
+        .from('discount_campaigns')
+        .select(`
+          id,
+          name,
+          type,
+          status,
+          start_date,
+          end_date,
+          discount_rules!inner (
+            discount_value,
+            minimum_quantity,
+            maximum_quantity,
+            buy_quantity,
+            get_quantity,
+            product_id
+          )
+        `)
+        .eq('status', 'active')
+        .eq('discount_rules.product_id', productId)
+        .lte('start_date', new Date().toISOString())
+        .gte('end_date', new Date().toISOString())
+        .gte('discount_rules.minimum_quantity', quantity)
+        .order('discount_rules.discount_value', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        return data[0];
+        const campaign = data[0];
+        const rule = campaign.discount_rules[0];
+        
+        // Get product price
+        const { data: productData } = await supabase
+          .from('products')
+          .select('price')
+          .eq('id', productId)
+          .single();
+          
+        if (!productData) return null;
+        
+        const originalPrice = productData.price;
+        let discountAmount = 0;
+        let finalPrice = originalPrice;
+        
+        if (campaign.type === 'percentage') {
+          discountAmount = (originalPrice * rule.discount_value / 100);
+          finalPrice = originalPrice - discountAmount;
+        } else if (campaign.type === 'fixed_amount') {
+          discountAmount = Math.min(rule.discount_value, originalPrice);
+          finalPrice = Math.max(0, originalPrice - discountAmount);
+        }
+        
+        return {
+          campaign_id: campaign.id,
+          discount_type: campaign.type,
+          original_price: originalPrice,
+          discount_amount: discountAmount,
+          final_price: finalPrice,
+          savings_percentage: originalPrice > 0 ? (discountAmount / originalPrice) * 100 : 0,
+          offer_description: `${campaign.name}: ${campaign.type === 'percentage' ? rule.discount_value + '% OFF' : 'KES ' + rule.discount_value + ' OFF'}`
+        };
       }
 
       return null;

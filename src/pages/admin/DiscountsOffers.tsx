@@ -698,7 +698,7 @@ const DiscountsOffers = () => {
                                 <span className="font-medium text-green-900">Total Savings</span>
                               </div>
                               <p className="text-2xl font-bold text-green-900">
-                                KES {campaign.discount_usage.reduce((sum, usage) => sum + usage.discount_amount, 0).toLocaleString()}
+                                KES {campaign.discount_usage.reduce((sum, usage) => sum + Number(usage.discount_amount), 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                               </p>
                             </div>
                             <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
@@ -707,7 +707,7 @@ const DiscountsOffers = () => {
                                 <span className="font-medium text-purple-900">Items Sold</span>
                               </div>
                               <p className="text-2xl font-bold text-purple-900">
-                                {campaign.discount_usage.reduce((sum, usage) => sum + usage.quantity_used, 0)}
+                                {campaign.discount_usage.reduce((sum, usage) => sum + Number(usage.quantity_used), 0)}
                               </p>
                             </div>
                           </div>
