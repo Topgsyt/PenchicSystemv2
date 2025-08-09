@@ -32,15 +32,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 interface DiscountCampaign {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle';
   status: 'active' | 'inactive' | 'expired';
   start_date: string;
   end_date: string;
-  created_by: string;
+  created_by?: string;
   created_at: string;
-  discount_rules: DiscountRule[];
-  discount_usage: DiscountUsage[];
+  discount_rules?: DiscountRule[];
+  discount_usage?: DiscountUsage[];
 }
 
 interface DiscountRule {
@@ -53,7 +53,7 @@ interface DiscountRule {
   get_quantity?: number;
   maximum_usage_per_customer?: number;
   maximum_total_usage?: number;
-  products: {
+  products?: {
     name: string;
     price: number;
     image_url: string;
@@ -62,7 +62,7 @@ interface DiscountRule {
 
 interface DiscountUsage {
   id: string;
-  user_id: string;
+  user_id?: string;
   discount_amount: number;
   quantity_used: number;
   created_at: string;
@@ -370,6 +370,14 @@ const DiscountsOffers = () => {
 
   const formatDiscountDisplay = (rule: DiscountRule, campaign: DiscountCampaign) => {
     const product = rule.products;
+    if (!product) {
+      return {
+        display: 'Product information unavailable',
+        savings: '',
+        badge: 'Special Offer'
+      };
+    }
+    
     const originalPrice = product.price;
     
     switch (campaign.type) {

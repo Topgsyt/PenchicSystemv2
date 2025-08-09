@@ -31,7 +31,7 @@ interface OrderItem {
   id: string;
   quantity: number;
   price: number;
-  order_product_snapshots: OrderSnapshot[];
+  order_product_snapshots?: OrderSnapshot[];
 }
 
 interface Payment {
@@ -45,13 +45,14 @@ interface Order {
   created_at: string;
   status: string;
   total: number;
+  user_id?: string;
   profiles?: {
     email: string;
     role: string;
-  };
-  order_items: OrderItem[];
-  order_calculations: OrderCalculation[];
-  payments: Payment[];
+  } | null;
+  order_items?: OrderItem[];
+  order_calculations?: OrderCalculation[];
+  payments?: Payment[];
 }
 
 const Orders = () => {
@@ -105,7 +106,13 @@ const Orders = () => {
       // Start with a simple query first
       let query = supabase
         .from('orders')
-        .select('*')
+        .select(`
+          id,
+          created_at,
+          status,
+          total,
+          user_id
+        `)
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
       // Apply date filtering if needed
@@ -371,8 +378,8 @@ const Orders = () => {
         '',
         // Summary
         `Total Orders,${filteredOrders.length}`,
-        `Total Revenue,KES ${orderStats.totalRevenue.toFixed(2)}`,
-        `Average Order Value,KES ${orderStats.averageOrder.toFixed(2)}`
+        `Total Revenue,KES ${Number(orderStats.totalRevenue).toFixed(2)}`,
+        `Average Order Value,KES ${Number(orderStats.averageOrder).toFixed(2)}`
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -808,7 +815,7 @@ const Orders = () => {
                                       {order.order_items.map((item: any) => {
                                         const snapshot = item.order_product_snapshots?.[0];
                                         const productName = snapshot?.product_name || `Item #${item.id.slice(0, 8)}`;
-                                        const priceAtTime = snapshot?.price_at_time || item.price || 0;
+                                        const priceAtTime = Number(snapshot?.price_at_time || item.price || 0);
                                         
                                         return (
                                           <tr key={item.id} className="hover:bg-neutral-50">
@@ -835,10 +842,10 @@ const Orders = () => {
                                             </td>
                                             <td className="text-center py-3 px-4 font-medium">{item.quantity}</td>
                                             <td className="text-right py-3 px-4 font-medium">
-                                              KES {priceAtTime.toLocaleString('en-KE')}
+                                              KES {priceAtTime.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                             </td>
                                             <td className="text-right py-3 px-4 font-bold">
-                                              KES {(item.quantity * priceAtTime).toLocaleString('en-KE')}
+                                              KES {(item.quantity * priceAtTime).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                             </td>
                                           </tr>
                                         );
@@ -865,22 +872,22 @@ const Orders = () => {
                                   <div className="space-y-3">
                                     <div className="flex justify-between">
                                       <span className="text-neutral-600">Subtotal:</span>
-                                      <span className="font-medium">KES {calculation.subtotal.toLocaleString('en-KE')}</span>
+                                      <span className="font-medium">KES {Number(calculation.subtotal).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                                     </div>
                                     <div className="flex justify-between">
-                                      <span className="text-neutral-600">Tax ({calculation.tax_rate}%):</span>
-                                      <span className="font-medium">KES {calculation.tax_amount.toLocaleString('en-KE')}</span>
+                                      <span className="text-neutral-600">Tax ({Number(calculation.tax_rate || 16)}%):</span>
+                                      <span className="font-medium">KES {Number(calculation.tax_amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                                     </div>
-                                    {calculation.discount_amount > 0 && (
+                                    {Number(calculation.discount_amount) > 0 && (
                                       <div className="flex justify-between text-green-600">
                                         <span>Discount:</span>
-                                        <span className="font-medium">-KES {calculation.discount_amount.toLocaleString('en-KE')}</span>
+                                        <span className="font-medium">-KES {Number(calculation.discount_amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                                       </div>
                                     )}
-                                    {calculation.shipping_fee > 0 && (
+                                    {Number(calculation.shipping_fee) > 0 && (
                                       <div className="flex justify-between">
                                         <span className="text-neutral-600">Shipping:</span>
-                                        <span className="font-medium">KES {calculation.shipping_fee.toLocaleString('en-KE')}</span>
+                                        <span className="font-medium">KES {Number(calculation.shipping_fee).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}</span>
                                       </div>
                                     )}
                                   </div>
@@ -888,8 +895,8 @@ const Orders = () => {
                                     <div className="flex justify-between items-center">
                                       <span className="text-lg font-bold text-neutral-900">Final Total:</span>
                                       <span className="text-2xl font-bold text-primary">
-                                        KES {calculation.total_amount.toLocaleString('en-KE')}
-                                      </span>
+                                        KES {Number(calculation.total_amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                      KES {(order.order_calculations?.[0]?.total_amount || order.total || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                     </div>
                                   </div>
                                 </div>
