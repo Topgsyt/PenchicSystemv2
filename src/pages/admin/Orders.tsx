@@ -159,11 +159,8 @@ const Orders = () => {
               .select('*')
               .eq('order_id', order.id);
 
-            // Fetch order calculations
-            const { data: orderCalculations } = await supabase
-              .from('order_calculations')
-              .select('*')
-              .eq('order_id', order.id);
+            // Initialize empty order calculations (table doesn't exist)
+            const orderCalculations: any[] = [];
 
             // Fetch payments
             const { data: payments } = await supabase
@@ -171,20 +168,11 @@ const Orders = () => {
               .select('*')
               .eq('order_id', order.id);
 
-            // Fetch product snapshots for items
-            const itemsWithSnapshots = await Promise.all(
-              (orderItems || []).map(async (item) => {
-                const { data: snapshots } = await supabase
-                  .from('order_product_snapshots')
-                  .select('*')
-                  .eq('order_item_id', item.id);
-
-                return {
-                  ...item,
-                  order_product_snapshots: snapshots || []
-                };
-              })
-            );
+            // Initialize empty product snapshots for items (table doesn't exist)
+            const itemsWithSnapshots = (orderItems || []).map(item => ({
+              ...item,
+              order_product_snapshots: []
+            }));
 
             return {
               ...order,

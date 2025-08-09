@@ -59,14 +59,19 @@ export const useDiscounts = (): UseDiscountsReturn => {
         .eq('discount_rules.product_id', productId)
         .lte('start_date', new Date().toISOString())
         .gte('end_date', new Date().toISOString())
-        .gte('discount_rules.minimum_quantity', quantity)
-        .order('discount_rules.discount_value', { ascending: false })
-        .limit(1);
+        .gte('discount_rules.minimum_quantity', quantity);
 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        const campaign = data[0];
+        // Sort campaigns by discount value in descending order (client-side)
+        const sortedCampaigns = data.sort((a, b) => {
+          const aValue = a.discount_rules[0]?.discount_value || 0;
+          const bValue = b.discount_rules[0]?.discount_value || 0;
+          return bValue - aValue;
+        });
+        
+        const campaign = sortedCampaigns[0];
         const rule = campaign.discount_rules[0];
         
         // Get product price
