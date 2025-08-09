@@ -36,43 +36,20 @@ export const useDiscounts = (): UseDiscountsReturn => {
     setError(null);
 
     try {
-      // Check if the RPC function exists, if not, return null
       const { data, error } = await supabase
-        .from('discount_campaigns')
-        .select(`
-          id,
-          name,
-          type,
-          status,
-          start_date,
-          end_date,
-          discount_rules!inner (
-            discount_value,
-            minimum_quantity,
-            maximum_quantity,
-            buy_quantity,
-            get_quantity,
-            product_id
-          )
-        `)
-        .eq('status', 'active')
-        .eq('discount_rules.product_id', productId)
+        .from('discounts')
+        .select('id, product_id, percentage, start_date, end_date, created_by')
+        .eq('product_id', productId)
         .lte('start_date', new Date().toISOString())
-        .gte('end_date', new Date().toISOString())
-        .gte('discount_rules.minimum_quantity', quantity);
+        .gte('end_date', new Date().toISOString());
 
       if (error) throw error;
 
       if (data && data.length > 0) {
-        // Sort campaigns by discount value in descending order (client-side)
-        const sortedCampaigns = data.sort((a, b) => {
-          const aValue = a.discount_rules[0]?.discount_value || 0;
-          const bValue = b.discount_rules[0]?.discount_value || 0;
-          return bValue - aValue;
-        });
+        // Sort discounts by percentage in descending order (client-side)
+        const sortedDiscounts = data.sort((a, b) => b.percentage - a.percentage);
         
-        const campaign = sortedCampaigns[0];
-        const rule = campaign.discount_rules[0];
+        const discount = sortedDiscounts[0];
         
         // Get product price
         const { data: productData } = await supabase
@@ -84,25 +61,17 @@ export const useDiscounts = (): UseDiscountsReturn => {
         if (!productData) return null;
         
         const originalPrice = productData.price;
-        let discountAmount = 0;
-        let finalPrice = originalPrice;
-        
-        if (campaign.type === 'percentage') {
-          discountAmount = (originalPrice * rule.discount_value / 100);
-          finalPrice = originalPrice - discountAmount;
-        } else if (campaign.type === 'fixed_amount') {
-          discountAmount = Math.min(rule.discount_value, originalPrice);
-          finalPrice = Math.max(0, originalPrice - discountAmount);
-        }
+        const discountAmount = (originalPrice * discount.percentage / 100);
+        const finalPrice = originalPrice - discountAmount;
         
         return {
-          campaign_id: campaign.id,
-          discount_type: campaign.type,
+          campaign_id: discount.id,
+          discount_type: 'percentage',
           original_price: originalPrice,
           discount_amount: discountAmount,
           final_price: finalPrice,
           savings_percentage: originalPrice > 0 ? (discountAmount / originalPrice) * 100 : 0,
-          offer_description: `${campaign.name}: ${campaign.type === 'percentage' ? rule.discount_value + '% OFF' : 'KES ' + rule.discount_value + ' OFF'}`
+          offer_description: `Special Offer: ${discount.percentage}% OFF`
         };
       }
 
