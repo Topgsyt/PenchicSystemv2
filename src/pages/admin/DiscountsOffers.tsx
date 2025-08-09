@@ -115,19 +115,42 @@ const DiscountsOffers = () => {
   const fetchCampaigns = async () => {
     try {
       const { data, error } = await supabase
-        .from('discount_campaigns')
+        .from('discounts')
         .select(`
           *,
-          discount_rules (
-            *,
-            products (name, price, image_url)
-          ),
-          discount_usage (*)
+          products (name, price, image_url)
         `)
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setCampaigns(data || []);
+      
+      // Transform the discounts data to match the expected campaign structure
+      const transformedCampaigns = (data || []).map(discount => ({
+        id: discount.id,
+        name: `Discount for ${discount.products?.name || 'Product'}`,
+        description: `${discount.percentage}% off`,
+        type: 'percentage' as const,
+        status: new Date(discount.end_date) > new Date() ? 'active' as const : 'expired' as const,
+        start_date: discount.start_date,
+        end_date: discount.end_date,
+        created_by: discount.created_by,
+        created_at: discount.created_at,
+        discount_rules: [{
+          id: discount.id,
+          product_id: discount.product_id,
+          discount_value: discount.percentage,
+          minimum_quantity: 1,
+          maximum_quantity: null,
+          buy_quantity: null,
+          get_quantity: null,
+          maximum_usage_per_customer: null,
+          maximum_total_usage: null,
+          products: discount.products
+        }],
+        discount_usage: []
+      }));
+      
+      setCampaigns(transformedCampaigns);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       setErrorMessage('Failed to fetch discount campaigns');
@@ -178,65 +201,30 @@ const DiscountsOffers = () => {
       }
 
       const campaignData = {
-        name: formData.name,
-        description: formData.description,
-        type: formData.type,
-        status: formData.status,
+        product_id: formData.rules[0].product_id,
+        percentage: formData.rules[0].discount_value,
         start_date: formData.start_date,
         end_date: formData.end_date,
         created_by: user?.id
       };
 
-      let campaignId: string;
-
       if (editingCampaign) {
         // Update existing campaign
         const { error: updateError } = await supabase
-          .from('discount_campaigns')
+          .from('discounts')
           .update(campaignData)
           .eq('id', editingCampaign.id);
 
         if (updateError) throw updateError;
-
-        // Delete existing rules
-        const { error: deleteRulesError } = await supabase
-          .from('discount_rules')
-          .delete()
-          .eq('campaign_id', editingCampaign.id);
-
-        if (deleteRulesError) throw deleteRulesError;
-
-        campaignId = editingCampaign.id;
       } else {
         // Create new campaign
-        const { data: newCampaign, error: campaignError } = await supabase
-          .from('discount_campaigns')
+        const { error: campaignError } = await supabase
+          .from('discounts')
           .insert([campaignData])
-          .select()
-          .single();
+          .select();
 
         if (campaignError) throw campaignError;
-        campaignId = newCampaign.id;
       }
-
-      // Insert discount rules
-      const rulesData = formData.rules.map(rule => ({
-        campaign_id: campaignId,
-        product_id: rule.product_id,
-        discount_value: rule.discount_value,
-        minimum_quantity: rule.minimum_quantity,
-        maximum_quantity: rule.maximum_quantity,
-        buy_quantity: rule.buy_quantity,
-        get_quantity: rule.get_quantity,
-        maximum_usage_per_customer: rule.maximum_usage_per_customer,
-        maximum_total_usage: rule.maximum_total_usage
-      }));
-
-      const { error: rulesError } = await supabase
-        .from('discount_rules')
-        .insert(rulesData);
-
-      if (rulesError) throw rulesError;
 
       setSuccessMessage(editingCampaign ? 'Campaign updated successfully!' : 'Campaign created successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);
@@ -258,7 +246,7 @@ const DiscountsOffers = () => {
 
     try {
       const { error } = await supabase
-        .from('discount_campaigns')
+        .from('discounts')
         .delete()
         .eq('id', campaignId);
 
@@ -277,13 +265,13 @@ const DiscountsOffers = () => {
   const handleEdit = (campaign: DiscountCampaign) => {
     setEditingCampaign(campaign);
     setFormData({
-      name: campaign.name,
-      description: campaign.description || '',
-      type: campaign.type,
-      status: campaign.status,
+      name: campaign.name || `Discount for ${campaign.discount_rules?.[0]?.products?.name || 'Product'}`,
+      description: campaign.description || `${campaign.discount_rules?.[0]?.discount_value || 0}% off`,
+      type: 'percentage' as const,
+      status: 'active' as const,
       start_date: campaign.start_date.split('T')[0],
       end_date: campaign.end_date.split('T')[0],
-      rules: campaign.discount_rules.map(rule => ({
+      rules: campaign.discount_rules?.map(rule => ({
         product_id: rule.product_id,
         discount_value: Number(rule.discount_value),
         minimum_quantity: Number(rule.minimum_quantity),
@@ -292,7 +280,16 @@ const DiscountsOffers = () => {
         get_quantity: rule.get_quantity ? Number(rule.get_quantity) : null,
         maximum_usage_per_customer: rule.maximum_usage_per_customer ? Number(rule.maximum_usage_per_customer) : null,
         maximum_total_usage: rule.maximum_total_usage ? Number(rule.maximum_total_usage) : null
-      }))
+      })) || [{
+        product_id: '',
+        discount_value: 0,
+        minimum_quantity: 1,
+        maximum_quantity: null,
+        buy_quantity: null,
+        get_quantity: null,
+        maximum_usage_per_customer: null,
+        maximum_total_usage: null
+      }]
     });
     setShowForm(true);
   };
@@ -784,32 +781,29 @@ const DiscountsOffers = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Campaign Name *
+                        Discount Name *
                       </label>
                       <input
                         type="text"
                         value={formData.name}
                         onChange={(e) => setFormData({...formData, name: e.target.value})}
                         className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        placeholder="e.g., Summer Sale 2024"
+                        placeholder="e.g., Summer Sale Discount"
                         required
                       />
                     </div>
 
                     <div>
                       <label className="block text-sm font-medium text-neutral-700 mb-2">
-                        Campaign Type *
+                        Discount Type
                       </label>
                       <select
                         value={formData.type}
                         onChange={(e) => setFormData({...formData, type: e.target.value as any})}
                         className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        required
+                        disabled
                       >
                         <option value="percentage">Percentage Discount</option>
-                        <option value="fixed_amount">Fixed Amount Off</option>
-                        <option value="buy_x_get_y">Buy X Get Y Free</option>
-                        <option value="bundle">Bundle Deal</option>
                       </select>
                     </div>
 
@@ -822,7 +816,7 @@ const DiscountsOffers = () => {
                         onChange={(e) => setFormData({...formData, description: e.target.value})}
                         className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                         rows={3}
-                        placeholder="Describe your promotional campaign..."
+                        placeholder="Describe your discount..."
                       />
                     </div>
 
@@ -856,34 +850,17 @@ const DiscountsOffers = () => {
                   {/* Discount Rules */}
                   <div className="border-t border-neutral-200 pt-6">
                     <div className="flex items-center justify-between mb-4">
-                      <h3 className="text-lg font-semibold text-neutral-900">Discount Rules</h3>
-                      <button
-                        type="button"
-                        onClick={addRule}
-                        className="flex items-center gap-2 px-4 py-2 bg-primary/10 text-primary rounded-lg hover:bg-primary/20 transition-colors"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Add Rule
-                      </button>
+                      <h3 className="text-lg font-semibold text-neutral-900">Discount Configuration</h3>
                     </div>
 
                     <div className="space-y-4">
-                      {formData.rules.map((rule, index) => (
+                      {formData.rules.slice(0, 1).map((rule, index) => (
                         <div key={index} className="bg-neutral-50 rounded-xl p-4 border border-neutral-200">
                           <div className="flex items-center justify-between mb-4">
-                            <h4 className="font-medium text-neutral-900">Rule #{index + 1}</h4>
-                            {formData.rules.length > 1 && (
-                              <button
-                                type="button"
-                                onClick={() => removeRule(index)}
-                                className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
-                            )}
+                            <h4 className="font-medium text-neutral-900">Discount Settings</h4>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                               <label className="block text-sm font-medium text-neutral-700 mb-2">
                                 Product *
@@ -905,9 +882,7 @@ const DiscountsOffers = () => {
 
                             <div>
                               <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                {formData.type === 'percentage' ? 'Discount %' : 
-                                 formData.type === 'fixed_amount' ? 'Amount Off (KES)' :
-                                 formData.type === 'buy_x_get_y' ? 'Buy Quantity' : 'Discount Value'} *
+                                Discount Percentage *
                               </label>
                               <input
                                 type="number"
@@ -915,81 +890,9 @@ const DiscountsOffers = () => {
                                 onChange={(e) => updateRule(index, 'discount_value', parseFloat(e.target.value) || 0)}
                                 className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                                 min="0"
-                                max={formData.type === 'percentage' ? 100 : undefined}
-                                step={formData.type === 'percentage' ? 0.01 : 1}
+                                max="100"
+                                step="0.01"
                                 required
-                              />
-                            </div>
-
-                            {formData.type === 'buy_x_get_y' && (
-                              <>
-                                <div>
-                                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                    Buy Quantity *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={rule.buy_quantity || ''}
-                                    onChange={(e) => updateRule(index, 'buy_quantity', parseInt(e.target.value) || null)}
-                                    className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                                    min="1"
-                                    placeholder="e.g., 2"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                    Get Quantity Free *
-                                  </label>
-                                  <input
-                                    type="number"
-                                    value={rule.get_quantity || ''}
-                                    onChange={(e) => updateRule(index, 'get_quantity', parseInt(e.target.value) || null)}
-                                    className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                                    min="1"
-                                    placeholder="e.g., 1"
-                                  />
-                                </div>
-                              </>
-                            )}
-
-                            <div>
-                              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                Minimum Quantity
-                              </label>
-                              <input
-                                type="number"
-                                value={rule.minimum_quantity}
-                                onChange={(e) => updateRule(index, 'minimum_quantity', parseInt(e.target.value) || 1)}
-                                className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                                min="1"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                Maximum Quantity
-                              </label>
-                              <input
-                                type="number"
-                                value={rule.maximum_quantity || ''}
-                                onChange={(e) => updateRule(index, 'maximum_quantity', parseInt(e.target.value) || null)}
-                                className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                                min="1"
-                                placeholder="No limit"
-                              />
-                            </div>
-
-                            <div>
-                              <label className="block text-sm font-medium text-neutral-700 mb-2">
-                                Max Uses Per Customer
-                              </label>
-                              <input
-                                type="number"
-                                value={rule.maximum_usage_per_customer || ''}
-                                onChange={(e) => updateRule(index, 'maximum_usage_per_customer', parseInt(e.target.value) || null)}
-                                className="w-full px-4 py-3 border border-neutral-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                                min="1"
-                                placeholder="No limit"
                               />
                             </div>
                           </div>
@@ -1012,7 +915,7 @@ const DiscountsOffers = () => {
                       className="flex items-center gap-2 px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       <Save className="w-4 h-4" />
-                      {loading ? 'Saving...' : editingCampaign ? 'Update Campaign' : 'Create Campaign'}
+                      {loading ? 'Saving...' : editingCampaign ? 'Update Discount' : 'Create Discount'}
                     </button>
                   </div>
                 </form>
