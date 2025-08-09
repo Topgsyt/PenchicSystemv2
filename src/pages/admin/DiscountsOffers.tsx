@@ -285,13 +285,13 @@ const DiscountsOffers = () => {
       end_date: campaign.end_date.split('T')[0],
       rules: campaign.discount_rules.map(rule => ({
         product_id: rule.product_id,
-        discount_value: rule.discount_value,
-        minimum_quantity: rule.minimum_quantity,
-        maximum_quantity: rule.maximum_quantity,
-        buy_quantity: rule.buy_quantity,
-        get_quantity: rule.get_quantity,
-        maximum_usage_per_customer: rule.maximum_usage_per_customer,
-        maximum_total_usage: rule.maximum_total_usage
+        discount_value: Number(rule.discount_value),
+        minimum_quantity: Number(rule.minimum_quantity),
+        maximum_quantity: rule.maximum_quantity ? Number(rule.maximum_quantity) : null,
+        buy_quantity: rule.buy_quantity ? Number(rule.buy_quantity) : null,
+        get_quantity: rule.get_quantity ? Number(rule.get_quantity) : null,
+        maximum_usage_per_customer: rule.maximum_usage_per_customer ? Number(rule.maximum_usage_per_customer) : null,
+        maximum_total_usage: rule.maximum_total_usage ? Number(rule.maximum_total_usage) : null
       }))
     });
     setShowForm(true);
@@ -698,7 +698,7 @@ const DiscountsOffers = () => {
                                 <span className="font-medium text-green-900">Total Savings</span>
                               </div>
                               <p className="text-2xl font-bold text-green-900">
-                                KES {campaign.discount_usage.reduce((sum, usage) => sum + Number(usage.discount_amount), 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
+                                KES {campaign.discount_usage.reduce((sum, usage) => sum + usage.discount_amount, 0).toLocaleString()}
                               </p>
                             </div>
                             <div className="bg-purple-50 rounded-lg p-4 border border-purple-200">
@@ -707,7 +707,7 @@ const DiscountsOffers = () => {
                                 <span className="font-medium text-purple-900">Items Sold</span>
                               </div>
                               <p className="text-2xl font-bold text-purple-900">
-                                {campaign.discount_usage.reduce((sum, usage) => sum + Number(usage.quantity_used), 0)}
+                                {campaign.discount_usage.reduce((sum, usage) => sum + usage.quantity_used, 0)}
                               </p>
                             </div>
                           </div>

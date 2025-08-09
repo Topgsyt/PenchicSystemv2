@@ -42,13 +42,13 @@ const DiscountBadge: React.FC<DiscountBadgeProps> = ({
   const getBadgeText = () => {
     switch (type) {
       case 'percentage':
-        return `${value}% OFF`;
+        return `${Number(value).toFixed(0)}% OFF`;
       case 'fixed_amount':
-        return `KES ${value} OFF`;
+        return `KES ${Number(value).toFixed(0)} OFF`;
       case 'buy_x_get_y':
         return `Buy ${buyQuantity} Get ${getQuantity}`;
       case 'bundle':
-        return `${value}% Bundle`;
+        return `${Number(value).toFixed(0)}% Bundle`;
       default:
         return 'OFFER';
     }

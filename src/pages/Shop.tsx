@@ -58,20 +58,24 @@ export default function Shop() {
     try {
       const productsWithDiscountInfo = await Promise.all(
         products.map(async (product) => {
-          const discountInfo = await getProductDiscount(product.id, 1, user?.id);
+          try {
+            const discountInfo = await getProductDiscount(product.id, 1, user?.id);
           
-          if (discountInfo) {
-            return {
-              ...product,
-              discount: {
-                type: discountInfo.discount_type,
-                value: discountInfo.savings_percentage,
-                original_price: discountInfo.original_price,
-                discounted_price: discountInfo.final_price,
-                savings: discountInfo.discount_amount,
-                campaign_name: discountInfo.offer_description.split(':')[0]
-              }
-            };
+            if (discountInfo) {
+              return {
+                ...product,
+                discount: {
+                  type: discountInfo.discount_type,
+                  value: discountInfo.savings_percentage,
+                  original_price: discountInfo.original_price,
+                  discounted_price: discountInfo.final_price,
+                  savings: discountInfo.discount_amount,
+                  campaign_name: discountInfo.offer_description.split(':')[0] || 'Special Offer'
+                }
+              };
+            }
+          } catch (error) {
+            console.error(`Error loading discount for product ${product.id}:`, error);
           }
           
           return product;

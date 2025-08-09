@@ -428,7 +428,7 @@ const Orders = () => {
     .filter(order => filter === 'all' || order.status === filter)
     .filter(order => 
       searchTerm === '' || 
-      (order.profiles?.email || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+      order.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.id.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
@@ -757,7 +757,7 @@ const Orders = () => {
                           <div className="text-right">
                             <p className="text-sm text-neutral-500">Total Amount</p>
                             <p className="text-2xl font-bold text-neutral-900">
-                              KES {(calculation?.total_amount || order.total || 0).toLocaleString('en-KE')}
+                              KES {Number(calculation?.total_amount || order.total || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                             </p>
                           </div>
                           
@@ -896,7 +896,7 @@ const Orders = () => {
                                       <span className="text-lg font-bold text-neutral-900">Final Total:</span>
                                       <span className="text-2xl font-bold text-primary">
                                         KES {Number(calculation.total_amount).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
-                                      </span>
+                                      KES {(order.order_calculations?.[0]?.total_amount || order.total || 0).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')}
                                     </div>
                                   </div>
                                 </div>
