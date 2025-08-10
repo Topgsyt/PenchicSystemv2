@@ -2,6 +2,8 @@ import React from 'react';
 import { ShoppingCart, Package, AlertCircle } from 'lucide-react';
 import { Product } from '../types';
 import DiscountBadge from './DiscountBadge';
+import { useStore } from '../store';
+import { useInventoryVisibility } from '../hooks/useInventoryVisibility';
 
 interface ProductCardProps {
   product: Product & {
@@ -27,6 +29,9 @@ const ProductCard: React.FC<ProductCardProps> = ({
   showAddToCart = true,
   className = ''
 }) => {
+  const user = useStore((state) => state.user);
+  const { canViewStock } = useInventoryVisibility(user?.role);
+  
   const hasDiscount = product.discount && product.discount.value > 0;
   const displayPrice = hasDiscount ? product.discount.discounted_price : product.price;
   const originalPrice = hasDiscount ? product.discount.original_price : product.price;
@@ -61,16 +66,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
-        {/* Stock Status */}
-        <div className="absolute top-3 right-3">
-          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${stockStatus.bgColor} ${stockStatus.color}`}>
-            <div className={`w-2 h-2 rounded-full ${
-              product.stock > 5 ? 'bg-green-500' : 
-              product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'
-            }`} />
-            {stockStatus.text}
+        {/* Stock Status - Only visible to admin/worker */}
+        {canViewStock && (
+          <div className="absolute top-3 right-3">
+            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${stockStatus.bgColor} ${stockStatus.color}`}>
+              <div className={`w-2 h-2 rounded-full ${
+                product.stock > 5 ? 'bg-green-500' : 
+                product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'
+              }`} />
+              {stockStatus.text}
+            </div>
           </div>
-        </div>
+        )}
 
         {product.stock <= 0 && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -144,16 +151,18 @@ const ProductCard: React.FC<ProductCardProps> = ({
           )}
         </div>
 
-        {/* Stock Information */}
+        {/* Stock Information - Only visible to admin/worker */}
         <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-2">
-            <Package className="w-4 h-4 text-neutral-500" />
-            <span className="text-sm text-neutral-600">
-              {product.stock} in stock
-            </span>
-          </div>
+          {canViewStock && (
+            <div className="flex items-center gap-2">
+              <Package className="w-4 h-4 text-neutral-500" />
+              <span className="text-sm text-neutral-600">
+                {product.stock} in stock
+              </span>
+            </div>
+          )}
           {hasDiscount && product.discount.type !== 'buy_x_get_y' && (
-            <div className="text-right">
+            <div className={`${canViewStock ? 'text-right' : 'text-left'}`}>
               <span className="text-xs text-green-600 font-medium">
                 {((Number(product.discount.savings) / originalPrice) * 100).toFixed(0)}% savings
               </span>

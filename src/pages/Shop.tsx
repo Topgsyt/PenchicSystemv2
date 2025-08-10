@@ -6,6 +6,7 @@ import { ShoppingCart, Plus, Minus, Store, AlertCircle, Search, Filter, X } from
 import { useStore } from '../store';
 import ProductCard from '../components/ProductCard';
 import { useDiscounts } from '../hooks/useDiscounts';
+import { useInventoryVisibility } from '../hooks/useInventoryVisibility';
 
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -19,6 +20,7 @@ export default function Shop() {
   const user = useStore((state) => state.user);
   const navigate = useNavigate();
   const { getProductDiscount } = useDiscounts();
+  const { canViewStock } = useInventoryVisibility(user?.role);
 
   useEffect(() => {
     fetchProducts();
@@ -214,6 +216,16 @@ export default function Shop() {
                   {category.charAt(0).toUpperCase() + category.slice(1)}
                 </button>
               ))}
+            </div>
+          )}
+
+          {/* Stock visibility notice for admin/workers */}
+          {canViewStock && (
+            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+              <p className="text-sm text-blue-800">
+                <Package className="w-4 h-4 inline mr-1" />
+                Stock levels are visible to you as an {user?.role}. Customers cannot see stock quantities.
+              </p>
             </div>
           )}
         </div>
