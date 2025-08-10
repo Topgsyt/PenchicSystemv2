@@ -3,7 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import { useDiscounts } from '../../hooks/useDiscounts';
+import { useInventoryVisibility } from '../../hooks/useInventoryVisibility';
 import DiscountBadge from '../../components/DiscountBadge';
+import DiscountCalculator from '../../components/pos/DiscountCalculator';
 import {
   Search,
   Plus,
@@ -23,13 +25,16 @@ import {
   Clock,
   CheckCircle,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Package,
+  Tag
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const POSInterface = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
+  const { canViewStock, canModifyStock } = useInventoryVisibility(user?.role);
   const [products, setProducts] = useState([]);
   const [productsWithDiscounts, setProductsWithDiscounts] = useState([]);
   const [cart, setCart] = useState([]);
@@ -45,6 +50,8 @@ const POSInterface = () => {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showReceipt, setShowReceipt] = useState(false);
   const [lastTransaction, setLastTransaction] = useState(null);
+  const [appliedDiscounts, setAppliedDiscounts] = useState([]);
+  const [discountTotal, setDiscountTotal] = useState(0);
   const { getProductDiscount, applyDiscount } = useDiscounts();
 
   // Cart collapse state
@@ -163,6 +170,13 @@ const POSInterface = () => {
       setProductsWithDiscounts(products);
     }
   };
+
+  const handleDiscountApplied = (discounts) => {
+    setAppliedDiscounts(discounts);
+    const total = discounts.reduce((sum, discount) => sum + discount.discountAmount, 0);
+    setDiscountTotal(total);
+  };
+
   const addToCart = async (product) => {
     // Check for applicable discounts
     const discountInfo = await getProductDiscount(product.id, 1, user?.id);
@@ -226,13 +240,15 @@ const POSInterface = () => {
     return { subtotal, discountTotal, discountedSubtotal, tax, total };
   };
 
+  const finalTotal = calculateTotals().total - discountTotal;
+
   const handlePayment = async () => {
     if (!cart.length) return;
 
-    const { total, discountTotal } = calculateTotals();
+    const { total } = calculateTotals();
 
-    if (paymentMethod === 'cash' && Number(cashAmount) < total) {
-      alert(`Cash amount should be at least KES ${total.toFixed(2)}`);
+    if (paymentMethod === 'cash' && Number(cashAmount) < finalTotal) {
+      alert(`Cash amount should be at least KES ${finalTotal.toFixed(2)}`);
       return;
     }
 
@@ -243,7 +259,7 @@ const POSInterface = () => {
           {
             user_id: user.id,
             status: 'processing',
-            total: total,
+            total: finalTotal,
           },
         ])
         .select()
@@ -273,6 +289,22 @@ const POSInterface = () => {
           );
         }
       }
+
+      // Apply discounts if any
+      for (const discount of appliedDiscounts) {
+        try {
+          await supabase.from('discount_usage').insert({
+            campaign_id: discount.campaignId,
+            order_id: order.id,
+            user_id: user.id,
+            discount_amount: discount.discountAmount,
+            quantity_used: discount.quantity
+          });
+        } catch (discountError) {
+          console.error('Error recording discount usage:', discountError);
+        }
+      }
+
       const { error: transactionError } = await supabase.from('pos_transactions').insert([
         {
           session_id: sessionId,
@@ -282,7 +314,7 @@ const POSInterface = () => {
           payment_method: paymentMethod,
           subtotal: calculateTotals().discountedSubtotal,
           tax_amount: calculateTotals().tax,
-          total_amount: total,
+          total_amount: finalTotal,
         },
       ]);
 
@@ -292,13 +324,19 @@ const POSInterface = () => {
         orderId: order.id,
         items: [...cart],
         totals: calculateTotals(),
+        discounts: appliedDiscounts,
+        discountTotal,
+        total: finalTotal,
         paymentMethod,
         cashAmount: paymentMethod === 'cash' ? Number(cashAmount) : null,
         mpesaReference: paymentMethod === 'mpesa' ? mpesaReference : null,
+        change: paymentMethod === 'cash' ? Number(cashAmount) - finalTotal : 0,
         timestamp: new Date()
       });
 
       setCart([]);
+      setAppliedDiscounts([]);
+      setDiscountTotal(0);
       setShowPayment(false);
       setShowReceipt(true);
       setPaymentMethod('');
@@ -487,12 +525,14 @@ const POSInterface = () => {
                               KES {product.price.toLocaleString()}
                             </p>
                           )}
-                          <p className={`text-xs mt-1 ${
-                            product.stock > 10 ? 'text-green-600' : 
-                            product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
-                          }`}>
-                            {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
-                          </p>
+                          {canViewStock && (
+                            <p className={`text-xs mt-1 ${
+                              product.stock > 10 ? 'text-green-600' : 
+                              product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
+                            }`}>
+                              {product.stock > 0 ? `${product.stock} in stock` : 'Out of stock'}
+                            </p>
+                          )}
                         </div>
                       </>
                     ) : (
@@ -534,12 +574,14 @@ const POSInterface = () => {
                             ) : (
                               <p className="text-primary font-bold">KES {product.price.toFixed(2)}</p>
                             )}
-                            <p className={`text-xs ${
-                              product.stock > 10 ? 'text-green-600' : 
-                              product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
-                            }`}>
-                              {product.stock} left
-                            </p>
+                            {canViewStock && (
+                              <p className={`text-xs ${
+                                product.stock > 10 ? 'text-green-600' : 
+                                product.stock > 0 ? 'text-yellow-600' : 'text-red-600'
+                              }`}>
+                                {product.stock} left
+                              </p>
+                            )}
                           </div>
                         </div>
                       </>
@@ -691,6 +733,11 @@ const POSInterface = () => {
                         ) : (
                           <p className="text-primary font-bold text-xs sm:text-sm">KES {item.price.toLocaleString()}</p>
                         )}
+                        {canViewStock && (
+                          <p className="text-xs text-neutral-500">
+                            Stock: {item.stock} units
+                          </p>
+                        )}
                       </div>
                       <button
                         onClick={() => removeFromCart(item.id)}
@@ -726,6 +773,15 @@ const POSInterface = () => {
                 ))}
               </div>
             )}
+
+            {/* Discount Calculator */}
+            {cart.length > 0 && (
+              <DiscountCalculator
+                cartItems={cart}
+                onDiscountApplied={handleDiscountApplied}
+                userId={user?.id}
+              />
+            )}
           </div>
 
           {cart.length > 0 && !isCartCollapsed && (
@@ -741,6 +797,15 @@ const POSInterface = () => {
                     <span className="font-medium">-KES {calculateTotals().discountTotal.toLocaleString()}</span>
                   </div>
                 )}
+                {discountTotal > 0 && (
+                  <div className="flex justify-between text-green-600">
+                    <span className="flex items-center gap-1">
+                      <Tag className="w-4 h-4" />
+                      Total Discounts
+                    </span>
+                    <span>-KES {discountTotal.toLocaleString()}</span>
+                  </div>
+                )}
                 <div className="flex justify-between text-sm">
                   <span className="text-neutral-600">After Discount:</span>
                   <span className="font-medium">KES {calculateTotals().discountedSubtotal.toLocaleString()}</span>
@@ -751,7 +816,7 @@ const POSInterface = () => {
                 </div>
                 <div className="flex justify-between font-bold border-t border-neutral-200 pt-2 text-sm sm:text-base">
                   <span>Total:</span>
-                  <span>KES {calculateTotals().total.toLocaleString()}</span>
+                  <span>KES {finalTotal.toLocaleString()}</span>
                 </div>
               </div>
 
@@ -777,7 +842,7 @@ const POSInterface = () => {
             <div className="p-2 border-t border-neutral-200 bg-neutral-50 flex-shrink-0">
               <div className="text-center">
                 <div className="text-xs font-medium text-neutral-900 mb-1">
-                  KES {calculateTotals().total.toLocaleString()}
+                  KES {finalTotal.toLocaleString()}
                 </div>
                 <button
                   onClick={() => setShowPayment(true)}
@@ -843,6 +908,15 @@ const POSInterface = () => {
                         <span>-KES {calculateTotals().discountTotal.toLocaleString()}</span>
                       </div>
                     )}
+                    {discountTotal > 0 && (
+                      <div className="flex justify-between text-green-600">
+                        <span className="flex items-center gap-1">
+                          <Tag className="w-4 h-4" />
+                          Discounts Applied:
+                        </span>
+                        <span>-KES {discountTotal.toLocaleString()}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span>Tax (16%):</span>
                       <span>KES {calculateTotals().tax.toLocaleString()}</span>
@@ -850,7 +924,7 @@ const POSInterface = () => {
                     <div className="border-t border-neutral-200 pt-2">
                       <div className="flex justify-between text-lg font-bold">
                         <span>Total Amount:</span>
-                        <span>KES {calculateTotals().total.toLocaleString()}</span>
+                        <span>KES {finalTotal.toLocaleString()}</span>
                       </div>
                     </div>
                   </div>
@@ -896,13 +970,13 @@ const POSInterface = () => {
                       onChange={(e) => setCashAmount(e.target.value)}
                       className="w-full px-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
                       placeholder="Enter amount received"
-                      min={calculateTotals().total.toString()}
+                      min={finalTotal.toString()}
                       step="0.01"
                     />
-                    {cashAmount && Number(cashAmount) >= calculateTotals().total && (
+                    {cashAmount && Number(cashAmount) >= finalTotal && (
                       <div className="bg-green-50 rounded-lg p-3">
                         <p className="text-sm text-green-700">
-                          Change: KES {(Number(cashAmount) - calculateTotals().total).toLocaleString()}
+                          Change: KES {(Number(cashAmount) - finalTotal).toLocaleString()}
                         </p>
                       </div>
                     )}
@@ -933,7 +1007,7 @@ const POSInterface = () => {
                 onClick={handlePayment}
                 disabled={
                   !paymentMethod ||
-                  (paymentMethod === 'cash' && (!cashAmount || Number(cashAmount) < calculateTotals().total)) ||
+                  (paymentMethod === 'cash' && (!cashAmount || Number(cashAmount) < finalTotal)) ||
                   (paymentMethod === 'mpesa' && !mpesaReference)
                 }
                 className="w-full py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
@@ -1094,6 +1168,12 @@ const POSInterface = () => {
                           <span className="font-semibold text-green-600">-KES {lastTransaction.totals.discountTotal.toLocaleString('en-KE')}</span>
                         </div>
                       )}
+                      {lastTransaction.discountTotal > 0 && (
+                        <div className="flex justify-between text-green-600">
+                          <span>Discounts:</span>
+                          <span>-KES {lastTransaction.discountTotal.toLocaleString()}</span>
+                        </div>
+                      )}
                       <div className="flex justify-between items-center py-1">
                         <span className="text-sm font-medium text-neutral-600">After Discount</span>
                         <span className="font-semibold text-neutral-900">KES {lastTransaction.totals.discountedSubtotal.toLocaleString('en-KE')}</span>
@@ -1110,7 +1190,7 @@ const POSInterface = () => {
                       <div className="flex justify-between items-center">
                         <span className="text-white font-bold text-lg">TOTAL AMOUNT</span>
                         <span className="text-white text-2xl font-black">
-                          KES {lastTransaction.totals.total.toLocaleString()}
+                          KES {lastTransaction.total.toLocaleString()}
                         </span>
                       </div>
                     </div>
@@ -1144,7 +1224,7 @@ const POSInterface = () => {
                             </span>
                           </div>
                           <span className="font-bold text-green-900 text-xl">
-                            KES {(lastTransaction.cashAmount - lastTransaction.totals.total).toLocaleString()}
+                            KES {lastTransaction.change.toLocaleString()}
                           </span>
                         </div>
                       )}
@@ -1157,6 +1237,20 @@ const POSInterface = () => {
                       )}
                     </div>
                   </div>
+
+                  {/* Discount Details */}
+                  {lastTransaction.discounts && lastTransaction.discounts.length > 0 && (
+                    <div className="border-t border-neutral-300 pt-4">
+                      <h4 className="font-medium text-neutral-900 mb-2">Applied Discounts:</h4>
+                      <div className="space-y-1">
+                        {lastTransaction.discounts.map((discount, index) => (
+                          <div key={index} className="text-sm text-green-600">
+                            {discount.description} - Save KES {discount.savings.toLocaleString()}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Footer */}
                   <div className="text-center mt-8 pt-6 border-t-2 border-neutral-200">
