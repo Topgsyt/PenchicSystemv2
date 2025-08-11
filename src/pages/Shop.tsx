@@ -4,8 +4,6 @@ import { supabase } from '../lib/supabase';
 import { Product } from '../types';
 import { ShoppingCart, Plus, Minus, Store, AlertCircle, Search, Filter, X } from 'lucide-react';
 import { useStore } from '../store';
-import ProductCard from '../components/ProductCard';
-import { useDiscounts } from '../hooks/useDiscounts';
 
 export default function Shop() {
   const [products, setProducts] = useState<Product[]>([]);
@@ -14,21 +12,13 @@ export default function Shop() {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [productsWithDiscounts, setProductsWithDiscounts] = useState<any[]>([]);
   const addToCart = useStore((state) => state.addToCart);
   const user = useStore((state) => state.user);
   const navigate = useNavigate();
-  const { getProductDiscount } = useDiscounts();
 
   useEffect(() => {
     fetchProducts();
   }, []);
-
-  useEffect(() => {
-    if (products.length > 0) {
-      loadProductDiscounts();
-    }
-  }, [products, user]);
 
   async function fetchProducts() {
     try {
@@ -54,40 +44,6 @@ export default function Shop() {
     }
   }
 
-  const loadProductDiscounts = async () => {
-    try {
-      const productsWithDiscountInfo = await Promise.all(
-        products.map(async (product) => {
-          try {
-            const discountInfo = await getProductDiscount(product.id, 1, user?.id);
-          
-            if (discountInfo) {
-              return {
-                ...product,
-                discount: {
-                  type: discountInfo.discount_type,
-                  value: discountInfo.savings_percentage,
-                  original_price: discountInfo.original_price,
-                  discounted_price: discountInfo.final_price,
-                  savings: discountInfo.discount_amount,
-                  campaign_name: discountInfo.offer_description.split(':')[0] || 'Special Offer'
-                }
-              };
-            }
-          } catch (error) {
-            console.error(`Error loading discount for product ${product.id}:`, error);
-          }
-          
-          return product;
-        })
-      );
-      
-      setProductsWithDiscounts(productsWithDiscountInfo);
-    } catch (error) {
-      console.error('Error loading discounts:', error);
-      setProductsWithDiscounts(products);
-    }
-  };
   const handleQuantityChange = (productId: string, value: string | number) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;
@@ -146,7 +102,7 @@ export default function Shop() {
     return `KES ${price.toLocaleString('en-KE')}`;
   };
 
-  const filteredProducts = productsWithDiscounts
+  const filteredProducts = products
     .filter(product => {
       const matchesSearch = product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           product.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -220,14 +176,99 @@ export default function Shop() {
 
         {/* Products Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredProducts.map((product) => (
-            <ProductCard
-              key={product.id}
-              product={product}
-              onAddToCart={handleAddToCart}
-              showAddToCart={user !== null}
-            />
-          ))}
+          {filteredProducts.map((product) => {
+            const stockStatus = getStockStatus(product.stock);
+            return (
+              <div
+                key={product.id}
+                className="group bg-white rounded-xl overflow-hidden transform transition-all duration-300 hover:scale-[1.02] hover:shadow-xl border border-neutral-200"
+              >
+                <Link to={`/product/${product.id}`} className="block">
+                  <div className="relative aspect-square overflow-hidden">
+                    <img
+                      src={product.image_url}
+                      alt={product.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    {product.stock <= 0 && (
+                      <div className="absolute inset-0 bg-black bg-opacity-75 flex items-center justify-center backdrop-blur-sm">
+                        <span className="text-white font-medium px-4 py-2 bg-red-500 rounded-lg">
+                          Out of Stock
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                </Link>
+
+                <div className="p-6">
+                  <Link to={`/product/${product.id}`}>
+                    <h3 className="text-xl font-semibold mb-2 text-neutral-900 group-hover:text-primary transition-colors">
+                      {product.name}
+                    </h3>
+                  </Link>
+                  
+                  <p className="text-neutral-600 text-sm mb-4 line-clamp-2">
+                    {product.description}
+                  </p>
+
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-2xl font-bold text-neutral-900">{formatPrice(product.price)}</p>
+                    <div className={`flex items-center gap-2 ${stockStatus.color}`}>
+                      <AlertCircle className="w-4 h-4" />
+                      <span className="text-sm font-medium">{stockStatus.text}</span>
+                    </div>
+                  </div>
+
+                  {user && product.stock > 0 && (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between bg-neutral-100 rounded-lg p-2 border border-neutral-300">
+                        <button
+                          onClick={() => handleQuantityChange(product.id, -1)}
+                          className="p-2 hover:bg-neutral-200 text-neutral-800 rounded-lg transition-colors disabled:opacity-50"
+                          disabled={quantities[product.id] <= 1}
+                        >
+                          <Minus className="w-4 h-4" />
+                        </button>
+                        <input
+                          type="number"
+                          min="1"
+                          max={product.stock}
+                          value={quantities[product.id] || 1}
+                          onChange={(e) => handleQuantityChange(product.id, e.target.value)}
+                          className="w-16 text-center bg-transparent text-neutral-900"
+                        />
+                        <button
+                          onClick={() => handleQuantityChange(product.id, 1)}
+                          className="p-2 hover:bg-neutral-200 text-neutral-800 rounded-lg transition-colors disabled:opacity-50"
+                          disabled={(quantities[product.id] || 1) >= product.stock}
+                        >
+                          <Plus className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      <button
+                        onClick={() => handleAddToCart(product)}
+                        className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-all transform hover:scale-105"
+                      >
+                        <ShoppingCart className="w-5 h-5" />
+                        Add to Cart
+                      </button>
+                    </div>
+                  )}
+
+                  {!user && product.stock > 0 && (
+                    <button
+                      onClick={() => window.open('https://maps.google.com/?q=-1.1166,36.6333', '_blank')}
+                      className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-all transform hover:scale-105"
+                    >
+                      <Store className="w-5 h-5" />
+                      Visit Shop to Purchase
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {filteredProducts.length === 0 && (
