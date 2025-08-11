@@ -159,6 +159,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
               <span className="text-sm text-neutral-600">
                 {product.stock} in stock
               </span>
+              {product.stock <= 5 && product.stock > 0 && (
+                <span className="text-xs bg-yellow-100 text-yellow-700 px-2 py-1 rounded-full font-medium">
+                  Low Stock
+                </span>
+              )}
+              {product.stock === 0 && (
+                <span className="text-xs bg-red-100 text-red-700 px-2 py-1 rounded-full font-medium">
+                  Out of Stock
+                </span>
+              )}
             </div>
           )}
           {hasDiscount && product.discount.type !== 'buy_x_get_y' && (

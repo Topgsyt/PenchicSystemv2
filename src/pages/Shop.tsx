@@ -223,7 +223,7 @@ export default function Shop() {
           {canViewStock && (
             <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <Package className="w-4 h-4 inline mr-1" />
+                <AlertCircle className="w-4 h-4 inline mr-1" />
                 Stock levels are visible to you as an {user?.role}. Customers cannot see stock quantities.
               </p>
             </div>

@@ -114,64 +114,44 @@ const DiscountsOffers = () => {
 
   const fetchCampaigns = async () => {
     try {
-      // First try to fetch from the new discount_campaigns table
-      let { data, error } = await supabase
-        .from('discount_campaigns')
+      // Use the legacy discounts table
+      const { data: legacyData, error: legacyError } = await supabase
+        .from('discounts')
         .select(`
           *,
-          discount_rules (
-            *,
-            products (name, price, image_url)
-          ),
-          discount_usage (*)
+          products (name, price, image_url)
         `)
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.log('New discount system not available, falling back to legacy discounts table');
-        
-        // Fallback to legacy discounts table
-        const { data: legacyData, error: legacyError } = await supabase
-          .from('discounts')
-          .select(`
-            *,
-            products (name, price, image_url)
-          `)
-          .order('created_at', { ascending: false });
-
-        if (legacyError) throw legacyError;
-        
-        // Transform the legacy discounts data to match the expected campaign structure
-        const transformedCampaigns = (legacyData || []).map(discount => ({
+      if (legacyError) throw legacyError;
+      
+      // Transform the legacy discounts data to match the expected campaign structure
+      const transformedCampaigns = (legacyData || []).map(discount => ({
+        id: discount.id,
+        name: `Discount for ${discount.products?.name || 'Product'}`,
+        description: `${discount.percentage}% off`,
+        type: 'percentage' as const,
+        status: new Date(discount.end_date) > new Date() ? 'active' as const : 'expired' as const,
+        start_date: discount.start_date,
+        end_date: discount.end_date,
+        created_by: discount.created_by,
+        created_at: discount.created_at,
+        discount_rules: [{
           id: discount.id,
-          name: `Discount for ${discount.products?.name || 'Product'}`,
-          description: `${discount.percentage}% off`,
-          type: 'percentage' as const,
-          status: new Date(discount.end_date) > new Date() ? 'active' as const : 'expired' as const,
-          start_date: discount.start_date,
-          end_date: discount.end_date,
-          created_by: discount.created_by,
-          created_at: discount.created_at,
-          discount_rules: [{
-            id: discount.id,
-            product_id: discount.product_id,
-            discount_value: discount.percentage,
-            minimum_quantity: 1,
-            maximum_quantity: null,
-            buy_quantity: null,
-            get_quantity: null,
-            maximum_usage_per_customer: null,
-            maximum_total_usage: null,
-            products: discount.products
-          }],
-          discount_usage: []
-        }));
-        
-        setCampaigns(transformedCampaigns);
-      } else {
-        // Use the new discount system data directly
-        setCampaigns(data || []);
-      }
+          product_id: discount.product_id,
+          discount_value: discount.percentage,
+          minimum_quantity: 1,
+          maximum_quantity: null,
+          buy_quantity: null,
+          get_quantity: null,
+          maximum_usage_per_customer: null,
+          maximum_total_usage: null,
+          products: discount.products
+        }],
+        discount_usage: []
+      }));
+      
+      setCampaigns(transformedCampaigns);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
       setErrorMessage('Failed to fetch discount campaigns');

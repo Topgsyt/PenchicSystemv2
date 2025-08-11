@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tag, Gift, Percent, DollarSign } from 'lucide-react';
+import { Tag, Gift, Percent, DollarSign, Package } from 'lucide-react';
 
 interface DiscountBadgeProps {
   type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle';
@@ -8,6 +8,7 @@ interface DiscountBadgeProps {
   getQuantity?: number;
   className?: string;
   size?: 'small' | 'medium' | 'large';
+  animated?: boolean;
 }
 
 const DiscountBadge: React.FC<DiscountBadgeProps> = ({
@@ -16,7 +17,8 @@ const DiscountBadge: React.FC<DiscountBadgeProps> = ({
   buyQuantity,
   getQuantity,
   className = '',
-  size = 'medium'
+  size = 'medium',
+  animated = true
 }) => {
   const sizeClasses = {
     small: 'px-2 py-1 text-xs',
@@ -33,7 +35,7 @@ const DiscountBadge: React.FC<DiscountBadgeProps> = ({
       case 'buy_x_get_y':
         return <Gift className="w-3 h-3" />;
       case 'bundle':
-        return <Tag className="w-3 h-3" />;
+        return <Package className="w-3 h-3" />;
       default:
         return <Tag className="w-3 h-3" />;
     }
@@ -71,9 +73,10 @@ const DiscountBadge: React.FC<DiscountBadgeProps> = ({
 
   return (
     <span className={`
-      inline-flex items-center gap-1 font-bold rounded-full shadow-lg transform hover:scale-105 transition-all
+      inline-flex items-center gap-1 font-bold rounded-full shadow-lg transform transition-all
       ${getBadgeColor()}
       ${sizeClasses[size]}
+      ${animated ? 'hover:scale-105 animate-pulse' : ''}
       ${className}
     `}>
       {getIcon()}

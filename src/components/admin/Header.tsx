@@ -105,17 +105,30 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
     }
   };
 
+  // Listen for POS notifications
+  useEffect(() => {
+    const handlePOSNotification = (event: CustomEvent) => {
+      addNotification({
+        type: event.detail.type === 'success' ? 'analytics_milestone' : 
+              event.detail.type === 'error' ? 'low_stock' :
+              event.detail.type === 'warning' ? 'low_stock' : 'new_order',
+        title: event.detail.title,
+        message: event.detail.message,
+        data: event.detail
+      });
+    };
+
+    window.addEventListener('posNotification', handlePOSNotification as EventListener);
+    
+    return () => {
+      window.removeEventListener('posNotification', handlePOSNotification as EventListener);
+    };
+  }, []);
+
   // Real-time notifications setup
   useEffect(() => {
     const setupNotifications = async () => {
       try {
-        // First check if user is authenticated
-        const { data: { user: authUser } } = await supabase.auth.getUser();
-        if (!authUser) {
-          console.log('No authenticated user for notifications');
-          return;
-        }
-
         console.log('Setting up real-time notifications...');
 
         // Subscribe to new orders
