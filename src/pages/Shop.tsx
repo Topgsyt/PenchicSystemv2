@@ -14,11 +14,36 @@ export default function Shop() {
   const [showFilters, setShowFilters] = useState(false);
   const addToCart = useStore((state) => state.addToCart);
   const user = useStore((state) => state.user);
+  const { canViewStock } = useInventoryVisibility(user?.role);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchProducts();
+    loadProductDiscounts();
   }, []);
+
+  // Load discount information for products
+  const loadProductDiscounts = async () => {
+    try {
+      const productsWithDiscounts = await Promise.all(
+        products.map(async (product) => {
+          try {
+            const discountInfo = await getProductDiscount(product.id, 1, user?.id);
+            return {
+              ...product,
+              discount: discountInfo
+            };
+          } catch (error) {
+            console.error(`Error loading discount for product ${product.id}:`, error);
+            return product;
+          }
+        })
+      );
+      setProducts(productsWithDiscounts);
+    } catch (error) {
+      console.error('Error loading product discounts:', error);
+    }
+  };
 
   async function fetchProducts() {
     try {
@@ -212,10 +237,56 @@ export default function Shop() {
                   </p>
 
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-2xl font-bold text-neutral-900">{formatPrice(product.price)}</p>
-                    <div className={`flex items-center gap-2 ${stockStatus.color}`}>
-                      <AlertCircle className="w-4 h-4" />
-                      <span className="text-sm font-medium">{stockStatus.text}</span>
+                    <div className="flex-1">
+                      {product.discount ? (
+                        <div>
+                          {product.discount.discount_type === 'buy_x_get_y' ? (
+                            <div>
+                              <p className="text-2xl font-bold text-neutral-900">
+                                {formatPrice(product.price)}
+                              </p>
+                              <div className="bg-green-100 text-green-700 px-3 py-2 rounded-lg mt-2">
+                                <p className="font-bold text-center">
+                                  Buy {product.discount.buy_quantity} Get {product.discount.get_quantity} Free!
+                                </p>
+                              </div>
+                            </div>
+                          ) : (
+                            <div>
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-lg line-through text-neutral-500">
+                                  Was {formatPrice(product.discount.original_price)}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 mb-2">
+                                <span className="text-2xl font-bold text-red-600">
+                                  Now {formatPrice(product.discount.final_price)}
+                                </span>
+                                <span className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">
+                                  {product.discount.savings_percentage.toFixed(0)}% OFF
+                                </span>
+                              </div>
+                              <div className="bg-green-100 text-green-700 px-3 py-1 rounded text-sm font-medium">
+                                Save {formatPrice(product.discount.discount_amount)}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ) : (
+                        <p className="text-2xl font-bold text-neutral-900">{formatPrice(product.price)}</p>
+                      )}
+                    </div>
+                    {canViewStock && (
+                      <div className={`flex items-center gap-2 ${stockStatus.color}`}>
+                        <AlertCircle className="w-4 h-4" />
+                        <span className="text-sm font-medium">{stockStatus.text}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {!canViewStock && (
+                    <div className="flex justify-end">
+                      <span className="text-sm text-neutral-500">{product.category}</span>
                     </div>
                   </div>
 

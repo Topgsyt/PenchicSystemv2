@@ -107,21 +107,56 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
 
   // Listen for POS notifications
   useEffect(() => {
-    const handlePOSNotification = (event: CustomEvent) => {
+    const handlePOSNotification = (event: any) => {
       addNotification({
-        type: event.detail.type === 'success' ? 'analytics_milestone' : 
+        type: event.detail.type === 'success' ? 'new_order' : 
               event.detail.type === 'error' ? 'low_stock' :
-              event.detail.type === 'warning' ? 'low_stock' : 'new_order',
+              event.detail.type === 'warning' ? 'low_stock' : 
+              event.detail.type === 'info' ? 'analytics_milestone' : 'new_order',
         title: event.detail.title,
         message: event.detail.message,
         data: event.detail
       });
+      
+      // Also show a toast notification for immediate feedback
+      const toast = document.createElement('div');
+      toast.className = `fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ${
+        event.detail.type === 'success' ? 'bg-green-500 text-white' :
+        event.detail.type === 'error' ? 'bg-red-500 text-white' :
+        event.detail.type === 'warning' ? 'bg-yellow-500 text-white' :
+        'bg-blue-500 text-white'
+      }`;
+      toast.innerHTML = `
+        <div class="flex items-center gap-2">
+          <div class="font-semibold">${event.detail.title}</div>
+        </div>
+        <div class="text-sm mt-1">${event.detail.message}</div>
+      `;
+      
+      document.body.appendChild(toast);
+      
+      // Animate in
+      setTimeout(() => {
+        toast.style.transform = 'translateX(0)';
+        toast.style.opacity = '1';
+      }, 100);
+      
+      // Remove after 4 seconds
+      setTimeout(() => {
+        toast.style.transform = 'translateX(100%)';
+        toast.style.opacity = '0';
+        setTimeout(() => {
+          if (document.body.contains(toast)) {
+            document.body.removeChild(toast);
+          }
+        }, 300);
+      }, 4000);
     };
 
-    window.addEventListener('posNotification', handlePOSNotification as EventListener);
+    window.addEventListener('posNotification', handlePOSNotification);
     
     return () => {
-      window.removeEventListener('posNotification', handlePOSNotification as EventListener);
+      window.removeEventListener('posNotification', handlePOSNotification);
     };
   }, []);
 

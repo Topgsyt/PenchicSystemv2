@@ -102,44 +102,50 @@ const ProductCard: React.FC<ProductCardProps> = ({
         <div className="mb-4">
           {hasDiscount ? (
             <div className="space-y-2">
-              {/* Discount Display */}
-              <div className="bg-gradient-to-r from-red-50 to-orange-50 rounded-lg p-3 border border-red-200">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-red-700 font-medium text-sm">{product.discount.campaign_name}</span>
-                  <DiscountBadge
-                    type={product.discount.type}
-                    value={product.discount.value}
-                    buyQuantity={product.discount.buy_quantity}
-                    getQuantity={product.discount.get_quantity}
-                    size="small"
-                  />
-                </div>
-                
-                {product.discount.type === 'buy_x_get_y' ? (
-                  <div>
-                    <p className="text-lg font-bold text-neutral-900">
+              {product.discount.type === 'buy_x_get_y' ? (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-2xl font-bold text-neutral-900">
                       KES {originalPrice.toLocaleString()}
-                    </p>
-                    <p className="text-green-600 font-semibold text-sm">
+                    </span>
+                    <DiscountBadge
+                      type={product.discount.type}
+                      value={product.discount.value}
+                      buyQuantity={product.discount.buy_quantity}
+                      getQuantity={product.discount.get_quantity}
+                      size="small"
+                    />
+                  </div>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200">
+                    <p className="text-green-700 font-bold text-center">
                       Buy {product.discount.buy_quantity} Get {product.discount.get_quantity} Free!
                     </p>
                   </div>
-                ) : (
-                  <div>
+                </div>
+              ) : (
+                <div>
+                  <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-lg line-through text-neutral-500">
-                        KES {originalPrice.toLocaleString()}
+                        Was KES {originalPrice.toLocaleString()}
                       </span>
-                      <span className="text-xl font-bold text-red-600">
-                        KES {displayPrice.toLocaleString()}
+                      <span className="text-2xl font-bold text-red-600">
+                        Now KES {displayPrice.toLocaleString()}
                       </span>
                     </div>
-                    <p className="text-green-600 font-semibold text-sm">
+                    <DiscountBadge
+                      type={product.discount.type}
+                      value={product.discount.value}
+                      size="small"
+                    />
+                  </div>
+                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2 border border-green-200">
+                    <p className="text-green-700 font-semibold text-center text-sm">
                       Save KES {product.discount.savings.toLocaleString()}
                     </p>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex items-center justify-between">
