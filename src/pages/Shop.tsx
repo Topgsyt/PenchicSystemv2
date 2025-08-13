@@ -14,7 +14,7 @@ export default function Shop() {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [productsWithDiscounts, setProductsWithDiscounts] = useState<any[]>([]);
+  const [productsWithDiscounts, setProductsWithDiscounts] = useState<Product[]>([]);
   const addToCart = useStore((state) => state.addToCart);
   const user = useStore((state) => state.user);
   const navigate = useNavigate();
@@ -65,12 +65,14 @@ export default function Shop() {
               return {
                 ...product,
                 discount: {
-                  type: discountInfo.discount_type,
+                  type: discountInfo.discount_type as 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle',
                   value: discountInfo.savings_percentage,
                   original_price: discountInfo.original_price,
                   discounted_price: discountInfo.final_price,
                   savings: discountInfo.discount_amount,
-                  campaign_name: discountInfo.offer_description.split(':')[0] || 'Special Offer'
+                  campaign_name: discountInfo.offer_description.split(':')[0] || 'Special Offer',
+                  buy_quantity: discountInfo.buy_quantity,
+                  get_quantity: discountInfo.get_quantity
                 }
               };
             }
@@ -85,9 +87,11 @@ export default function Shop() {
       setProductsWithDiscounts(productsWithDiscountInfo);
     } catch (error) {
       console.error('Error loading discounts:', error);
-      setProductsWithDiscounts(products);
+      // If discount loading fails, show products without discounts
+      setProductsWithDiscounts(products.map(product => ({ ...product })));
     }
   };
+
   const handleQuantityChange = (productId: string, value: string | number) => {
     const product = products.find(p => p.id === productId);
     if (!product) return;

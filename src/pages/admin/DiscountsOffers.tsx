@@ -114,7 +114,27 @@ const DiscountsOffers = () => {
 
   const fetchCampaigns = async () => {
     try {
-      // Use the legacy discounts table
+      // Try to fetch from discount_campaigns table first
+      const { data: campaignData, error: campaignError } = await supabase
+        .from('discount_campaigns')
+        .select(`
+          *,
+          discount_rules (
+            *,
+            products (name, price, image_url)
+          ),
+          discount_usage (*)
+        `)
+        .order('created_at', { ascending: false });
+
+      if (!campaignError && campaignData) {
+        setCampaigns(campaignData);
+        return;
+      }
+
+      console.log('Campaign tables not found, using legacy discounts table');
+      
+      // Fallback to legacy discounts table
       const { data: legacyData, error: legacyError } = await supabase
         .from('discounts')
         .select(`
@@ -154,7 +174,8 @@ const DiscountsOffers = () => {
       setCampaigns(transformedCampaigns);
     } catch (error) {
       console.error('Error fetching campaigns:', error);
-      setErrorMessage('Failed to fetch discount campaigns');
+      setErrorMessage('Failed to fetch discount campaigns. Please check your database connection.');
+      setCampaigns([]);
     } finally {
       setLoading(false);
     }
@@ -201,30 +222,83 @@ const DiscountsOffers = () => {
         }
       }
 
-      const campaignData = {
+      // Try to use new campaign system first
+      const { data: testCampaign, error: testError } = await supabase
+        .from('discount_campaigns')
+        .select('id')
+        .limit(1);
+
+      if (!testError) {
+        // New campaign system exists
+        const campaignData = {
+          name: formData.name,
+          description: formData.description,
+          type: formData.type,
+          status: formData.status,
+          start_date: formData.start_date,
+          end_date: formData.end_date,
+          created_by: user?.id
+        };
+
+        if (editingCampaign) {
+          const { error: updateError } = await supabase
+            .from('discount_campaigns')
+            .update(campaignData)
+            .eq('id', editingCampaign.id);
+
+          if (updateError) throw updateError;
+        } else {
+          const { data: newCampaign, error: campaignError } = await supabase
+            .from('discount_campaigns')
+            .insert([campaignData])
+            .select()
+            .single();
+
+          if (campaignError) throw campaignError;
+
+          // Insert discount rules
+          const rulesData = formData.rules.map(rule => ({
+            campaign_id: newCampaign.id,
+            product_id: rule.product_id,
+            discount_value: rule.discount_value,
+            minimum_quantity: rule.minimum_quantity,
+            maximum_quantity: rule.maximum_quantity,
+            buy_quantity: rule.buy_quantity,
+            get_quantity: rule.get_quantity,
+            maximum_usage_per_customer: rule.maximum_usage_per_customer,
+            maximum_total_usage: rule.maximum_total_usage
+          }));
+
+          const { error: rulesError } = await supabase
+            .from('discount_rules')
+            .insert(rulesData);
+
+          if (rulesError) throw rulesError;
+        }
+      } else {
+        // Fallback to legacy discounts table
+        const legacyData = {
         product_id: formData.rules[0].product_id,
         percentage: formData.rules[0].discount_value,
         start_date: formData.start_date,
         end_date: formData.end_date,
         created_by: user?.id
-      };
+        };
 
-      if (editingCampaign) {
-        // Update existing campaign
-        const { error: updateError } = await supabase
-          .from('discounts')
-          .update(campaignData)
-          .eq('id', editingCampaign.id);
+        if (editingCampaign) {
+          const { error: updateError } = await supabase
+            .from('discounts')
+            .update(legacyData)
+            .eq('id', editingCampaign.id);
 
-        if (updateError) throw updateError;
-      } else {
-        // Create new campaign
-        const { error: campaignError } = await supabase
-          .from('discounts')
-          .insert([campaignData])
-          .select();
+          if (updateError) throw updateError;
+        } else {
+          const { error: campaignError } = await supabase
+            .from('discounts')
+            .insert([legacyData]);
 
-        if (campaignError) throw campaignError;
+          if (campaignError) throw campaignError;
+        }
       }
 
       setSuccessMessage(editingCampaign ? 'Campaign updated successfully!' : 'Campaign created successfully!');
@@ -246,12 +320,30 @@ const DiscountsOffers = () => {
     }
 
     try {
-      const { error } = await supabase
+      // Try new system first
+      const { data: testCampaign, error: testError } = await supabase
+        .from('discount_campaigns')
+        .select('id')
+        .eq('id', campaignId)
+        .limit(1);
+
+      if (!testError && testCampaign) {
+        // Delete from new system
+        const { error } = await supabase
+          .from('discount_campaigns')
+          .delete()
+          .eq('id', campaignId);
+
+        if (error) throw error;
+      } else {
+        // Delete from legacy system
+        const { error } = await supabase
         .from('discounts')
         .delete()
         .eq('id', campaignId);
 
-      if (error) throw error;
+        if (error) throw error;
+      }
 
       setSuccessMessage('Campaign deleted successfully!');
       setTimeout(() => setSuccessMessage(''), 3000);

@@ -108,6 +108,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
   // Listen for POS notifications
   useEffect(() => {
     const handlePOSNotification = (event: any) => {
+      console.log('POS Notification received:', event.detail);
+      
       addNotification({
         type: event.detail.type === 'success' ? 'new_order' : 
               event.detail.type === 'error' ? 'low_stock' :
@@ -154,9 +156,11 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
     };
 
     window.addEventListener('posNotification', handlePOSNotification);
+    console.log('POS notification listener added');
     
     return () => {
       window.removeEventListener('posNotification', handlePOSNotification);
+      console.log('POS notification listener removed');
     };
   }, []);
 

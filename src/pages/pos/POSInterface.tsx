@@ -255,7 +255,9 @@ const POSInterface = () => {
       subtotal += originalPrice;
 
       if (item.product.discount) {
-        totalDiscount += item.product.discount.discount_amount * item.quantity;
+        const itemOriginalTotal = (item.product.discount.original_price || item.product.price) * item.quantity;
+        const itemDiscountedTotal = (item.product.discount.discounted_price || item.product.price) * item.quantity;
+        totalDiscount += (itemOriginalTotal - itemDiscountedTotal);
       }
     });
 
@@ -390,16 +392,15 @@ const POSInterface = () => {
   // Render product price with discount
   const renderProductPrice = (product: Product) => {
     if (product.discount) {
-      if (product.discount.discount_type === 'buy_x_get_y') {
+      if (product.discount.type === 'buy_x_get_y') {
         return (
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1 mb-1">
+            <div className="mb-2">
               <span className="text-lg font-bold text-neutral-900">
                 KES {product.price.toLocaleString()}
               </span>
-              <Gift className="w-4 h-4 text-green-600" />
             </div>
-            <div className="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">
+            <div className="bg-gradient-to-r from-green-100 to-emerald-100 text-green-800 px-2 py-2 rounded-lg text-xs font-bold border-2 border-green-300">
               Buy {product.discount.buy_quantity} Get {product.discount.get_quantity} Free!
             </div>
           </div>
@@ -407,16 +408,16 @@ const POSInterface = () => {
       } else {
         return (
           <div className="text-center">
-            <div className="text-sm text-neutral-500 line-through">
-              Was KES {product.discount.original_price.toLocaleString()}
+            <div className="text-sm text-neutral-500 line-through mb-1">
+              Was KES {product.discount.original_price?.toLocaleString() || product.price.toLocaleString()}
             </div>
             <div className="text-lg font-bold text-red-600">
-              Now KES {product.discount.final_price.toLocaleString()}
+              Now KES {product.discount.discounted_price?.toLocaleString() || product.price.toLocaleString()}
             </div>
-            <div className="bg-red-100 text-red-700 px-2 py-1 rounded text-xs font-bold">
-              {product.discount.discount_type === 'percentage' ? 
-                `${product.discount.savings_percentage.toFixed(0)}% OFF` :
-                `Save KES ${product.discount.discount_amount.toLocaleString()}`
+            <div className="bg-gradient-to-r from-red-100 to-pink-100 text-red-800 px-2 py-2 rounded-lg text-xs font-bold border-2 border-red-300">
+              {product.discount.type === 'percentage' ? 
+                `${product.discount.value.toFixed(0)}% OFF` :
+                `Save KES ${product.discount.savings.toLocaleString()}`
               }
             </div>
           </div>
@@ -436,7 +437,7 @@ const POSInterface = () => {
   // Render cart item with discount
   const renderCartItemPrice = (item: CartItem) => {
     if (item.product.discount) {
-      if (item.product.discount.discount_type === 'buy_x_get_y') {
+      if (item.product.discount.type === 'buy_x_get_y') {
         return (
           <div className="text-right">
             <div className="text-sm font-medium text-neutral-900">
@@ -448,8 +449,8 @@ const POSInterface = () => {
           </div>
         );
       } else {
-        const originalTotal = item.product.discount.original_price * item.quantity;
-        const discountedTotal = item.product.discount.final_price * item.quantity;
+        const originalTotal = (item.product.discount.original_price || item.product.price) * item.quantity;
+        const discountedTotal = (item.product.discount.discounted_price || item.product.price) * item.quantity;
         
         return (
           <div className="text-right">
@@ -458,6 +459,9 @@ const POSInterface = () => {
             </div>
             <div className="text-sm font-bold text-red-600">
               Now KES {discountedTotal.toLocaleString()}
+            </div>
+            <div className="text-xs text-green-600 font-medium">
+              Save KES {(originalTotal - discountedTotal).toLocaleString()}
             </div>
           </div>
         );
@@ -538,7 +542,7 @@ const POSInterface = () => {
                 <tbody>
                   {receiptData.items.map((item: CartItem, index: number) => {
                     const itemTotal = item.product.discount 
-                      ? item.product.discount.final_price * item.quantity
+                      ? (item.product.discount.discounted_price || item.product.price) * item.quantity
                       : item.product.price * item.quantity;
                     
                     return (
@@ -548,9 +552,9 @@ const POSInterface = () => {
                             <p className="font-medium">{item.product.name}</p>
                             {item.product.discount && (
                               <p className="text-xs text-green-600">
-                                {item.product.discount.discount_type === 'buy_x_get_y' 
+                                {item.product.discount.type === 'buy_x_get_y' 
                                   ? `Buy ${item.product.discount.buy_quantity} Get ${item.product.discount.get_quantity} Free`
-                                  : `${item.product.discount.savings_percentage.toFixed(0)}% OFF`
+                                  : `${item.product.discount.value.toFixed(0)}% OFF`
                                 }
                               </p>
                             )}
@@ -561,10 +565,10 @@ const POSInterface = () => {
                           {item.product.discount ? (
                             <div>
                               <div className="text-xs text-neutral-500 line-through">
-                                {item.product.discount.original_price.toLocaleString()}
+                                {(item.product.discount.original_price || item.product.price).toLocaleString()}
                               </div>
                               <div className="font-medium">
-                                {item.product.discount.final_price.toLocaleString()}
+                                {(item.product.discount.discounted_price || item.product.price).toLocaleString()}
                               </div>
                             </div>
                           ) : (
@@ -884,15 +888,15 @@ const POSInterface = () => {
                     <div className="flex justify-between text-sm">
                       <span className="text-neutral-600">Subtotal:</span>
                       <span className="font-medium">KES {subtotal.toLocaleString()}</span>
-                    </div>
+                      Was KES {(product.discount.original_price || product.price).toLocaleString()}
                     {totalDiscount > 0 && (
                       <div className="flex justify-between text-sm text-green-600">
-                        <span>Total Discount:</span>
+                      Now KES {(product.discount.discounted_price || product.price).toLocaleString()}
                         <span className="font-medium">-KES {totalDiscount.toLocaleString()}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between text-lg font-bold border-t border-neutral-200 pt-2">
-                      <span>Total:</span>
+                    <div className="bg-gradient-to-r from-red-100 to-pink-100 text-red-800 px-2 py-2 rounded-lg text-xs font-bold border-2 border-red-300 mt-1">
+                      {product.discount.type === 'percentage' ? 
+                        `${product.discount.value.toFixed(0)}% OFF` :
+                        `Save KES ${product.discount.savings.toLocaleString()}`
                       <span>KES {total.toLocaleString()}</span>
                     </div>
                   </div>

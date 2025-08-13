@@ -44,13 +44,13 @@ const DiscountBadge: React.FC<DiscountBadgeProps> = ({
   const getBadgeText = () => {
     switch (type) {
       case 'percentage':
-        return `${Math.round(Number(value))}% OFF`;
+        return `${Math.round(Number(value) || 0)}% OFF`;
       case 'fixed_amount':
-        return `KES ${Math.round(Number(value))} OFF`;
+        return `KES ${Math.round(Number(value) || 0)} OFF`;
       case 'buy_x_get_y':
-        return `Buy ${buyQuantity} Get ${getQuantity} Free`;
+        return `Buy ${buyQuantity || 1} Get ${getQuantity || 1} Free`;
       case 'bundle':
-        return `${Math.round(Number(value))}% Bundle`;
+        return `${Math.round(Number(value) || 0)}% Bundle`;
       default:
         return 'OFFER';
     }

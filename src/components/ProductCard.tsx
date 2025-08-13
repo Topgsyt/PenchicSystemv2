@@ -98,68 +98,64 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </p>
         </div>
 
-        {/* Pricing Section */}
+        {/* Enhanced Pricing Section with Clear Discount Display */}
         <div className="mb-4">
           {hasDiscount ? (
             <div className="space-y-2">
               {product.discount.type === 'buy_x_get_y' ? (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
+                  {/* Regular price for BOGO */}
+                  <div className="text-center mb-2">
                     <span className="text-2xl font-bold text-neutral-900">
                       KES {originalPrice.toLocaleString()}
                     </span>
-                    <DiscountBadge
-                      type={product.discount.type}
-                      value={product.discount.value}
-                      buyQuantity={product.discount.buy_quantity}
-                      getQuantity={product.discount.get_quantity}
-                      size="small"
-                    />
                   </div>
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-3 border border-green-200">
-                    <p className="text-green-700 font-bold text-center">
+                  {/* BOGO Offer Display */}
+                  <div className="bg-gradient-to-r from-green-100 to-emerald-100 rounded-lg p-3 border-2 border-green-300">
+                    <p className="text-green-800 font-bold text-center text-lg">
                       Buy {product.discount.buy_quantity} Get {product.discount.get_quantity} Free!
+                    </p>
+                    <p className="text-green-700 text-center text-sm mt-1">
+                      Special Promotional Offer
                     </p>
                   </div>
                 </div>
               ) : (
                 <div>
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg line-through text-neutral-500">
-                        Was KES {originalPrice.toLocaleString()}
-                      </span>
-                      <span className="text-2xl font-bold text-red-600">
-                        Now KES {displayPrice.toLocaleString()}
-                      </span>
+                  {/* Discount Price Display: "Was X Now Y" Format */}
+                  <div className="text-center mb-2">
+                    <div className="text-sm text-neutral-500 mb-1">
+                      <span className="line-through">Was KES {originalPrice.toLocaleString()}</span>
                     </div>
-                    <DiscountBadge
-                      type={product.discount.type}
-                      value={product.discount.value}
-                      size="small"
-                    />
+                    <div className="text-2xl font-bold text-red-600">
+                      Now KES {displayPrice.toLocaleString()}
+                    </div>
                   </div>
-                  <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg p-2 border border-green-200">
-                    <p className="text-green-700 font-semibold text-center text-sm">
+                  {/* Savings Display */}
+                  <div className="bg-gradient-to-r from-red-100 to-pink-100 rounded-lg p-2 border-2 border-red-300">
+                    <p className="text-red-800 font-bold text-center">
                       Save KES {product.discount.savings.toLocaleString()}
+                    </p>
+                    <p className="text-red-700 text-center text-sm">
+                      {product.discount.value}% OFF
                     </p>
                   </div>
                 </div>
               )}
             </div>
           ) : (
-            <div className="flex items-center justify-between">
+            <div className="text-center">
               <span className="text-2xl font-bold text-neutral-900">
                 KES {product.price.toLocaleString()}
               </span>
-              <span className="text-sm text-neutral-500">{product.category}</span>
+              <div className="text-sm text-neutral-500 mt-1">{product.category}</div>
             </div>
           )}
         </div>
 
         {/* Stock Information - Only visible to admin/worker */}
-        <div className="flex items-center justify-between mb-4">
-          {canViewStock && (
+        {canViewStock && (
+          <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Package className="w-4 h-4 text-neutral-500" />
               <span className="text-sm text-neutral-600">
@@ -176,15 +172,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
                 </span>
               )}
             </div>
-          )}
-          {hasDiscount && product.discount.type !== 'buy_x_get_y' && (
-            <div className={`${canViewStock ? 'text-right' : 'text-left'}`}>
-              <span className="text-xs text-green-600 font-medium">
-                {((Number(product.discount.savings) / originalPrice) * 100).toFixed(0)}% savings
-              </span>
-            </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Add to Cart Button */}
         {showAddToCart && onAddToCart && (
