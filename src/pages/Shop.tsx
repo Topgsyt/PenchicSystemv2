@@ -14,7 +14,18 @@ export default function Shop() {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [productsWithDiscounts, setProductsWithDiscounts] = useState<Product[]>([]);
+  const [productsWithDiscounts, setProductsWithDiscounts] = useState<(Product & {
+    discount?: {
+      type: 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle';
+      value: number;
+      original_price: number;
+      discounted_price: number;
+      savings: number;
+      campaign_name: string;
+      buy_quantity?: number;
+      get_quantity?: number;
+    };
+  })[]>([]);
   const addToCart = useStore((state) => state.addToCart);
   const user = useStore((state) => state.user);
   const navigate = useNavigate();
@@ -65,19 +76,19 @@ export default function Shop() {
               return {
                 ...product,
                 discount: {
-                  type: discountInfo.discount_type as 'percentage' | 'fixed_amount' | 'buy_x_get_y' | 'bundle',
+                  type: 'percentage' as const,
                   value: discountInfo.savings_percentage,
                   original_price: discountInfo.original_price,
                   discounted_price: discountInfo.final_price,
                   savings: discountInfo.discount_amount,
-                  campaign_name: discountInfo.offer_description.split(':')[0] || 'Special Offer',
-                  buy_quantity: discountInfo.buy_quantity,
-                  get_quantity: discountInfo.get_quantity
+                  campaign_name: discountInfo.offer_description.split(':')[0] || 'Special Offer'
                 }
               };
             }
           } catch (error) {
             console.error(`Error loading discount for product ${product.id}:`, error);
+            // Return product without discount instead of breaking
+            return product;
           }
           
           return product;
@@ -88,7 +99,7 @@ export default function Shop() {
     } catch (error) {
       console.error('Error loading discounts:', error);
       // If discount loading fails, show products without discounts
-      setProductsWithDiscounts(products.map(product => ({ ...product })));
+      setProductsWithDiscounts([...products]);
     }
   };
 

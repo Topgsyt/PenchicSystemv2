@@ -59,21 +59,21 @@ const DiscountBadge: React.FC<DiscountBadgeProps> = ({
   const getBadgeColor = () => {
     switch (type) {
       case 'percentage':
-        return 'bg-gradient-to-r from-red-500 to-red-600 text-white';
+        return 'bg-gradient-to-r from-red-500 to-red-600 text-white shadow-lg';
       case 'fixed_amount':
-        return 'bg-gradient-to-r from-green-500 to-green-600 text-white';
+        return 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-lg';
       case 'buy_x_get_y':
-        return 'bg-gradient-to-r from-purple-500 to-purple-600 text-white';
+        return 'bg-gradient-to-r from-purple-500 to-purple-600 text-white shadow-lg';
       case 'bundle':
-        return 'bg-gradient-to-r from-blue-500 to-blue-600 text-white';
+        return 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-lg';
       default:
-        return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white';
+        return 'bg-gradient-to-r from-gray-500 to-gray-600 text-white shadow-lg';
     }
   };
 
   return (
     <span className={`
-      inline-flex items-center gap-1 font-bold rounded-full shadow-lg transform transition-all
+      inline-flex items-center gap-1 font-bold rounded-full transform transition-all
       ${getBadgeColor()}
       ${sizeClasses[size]}
       ${animated ? 'hover:scale-105 animate-pulse' : ''}
