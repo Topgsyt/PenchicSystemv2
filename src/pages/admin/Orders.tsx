@@ -328,108 +328,98 @@ const Orders = () => {
     });
 
     if (format === 'csv') {
+      // Group orders by date
+      const ordersByDate = filteredOrders.reduce((acc, order) => {
+        const dateKey = new Date(order.created_at).toLocaleDateString('en-KE', {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        });
+        
+        if (!acc[dateKey]) {
+          acc[dateKey] = [];
+        }
+        acc[dateKey].push(order);
+        return acc;
+      }, {} as Record<string, typeof filteredOrders>);
+
+      // Sort dates
+      const sortedDates = Object.keys(ordersByDate).sort((a, b) => {
+        return new Date(a).getTime() - new Date(b).getTime();
+      });
+
       const csvContent = [
-        '# PENCHIC FARM - COMPREHENSIVE ORDER REPORT',
-        `# Report Period: ${startDate?.toLocaleDateString('en-KE') || 'All time'} to ${endDate?.toLocaleDateString('en-KE') || 'Present'}`,
-        `# Generated: ${new Date().toLocaleString('en-KE')}`,
-        `# Total Orders: ${filteredOrders.length}`,
-        `# Total Revenue: KES ${orderStats.totalRevenue.toLocaleString('en-KE')}`,
-        `# Average Order Value: KES ${orderStats.averageOrder.toLocaleString('en-KE')}`,
+        'PENCHIC FARM - DAILY ORDER REPORT',
+        `Report Period: ${startDate?.toLocaleDateString('en-KE') || 'All time'} to ${endDate?.toLocaleDateString('en-KE') || 'Present'}`,
+        `Generated: ${new Date().toLocaleString('en-KE')}`,
+        `Total Orders: ${filteredOrders.length}`,
+        `Total Revenue: KES ${orderStats.totalRevenue.toLocaleString('en-KE')}`,
         '',
-        '=== ORDER SUMMARY BY STATUS ===',
-        `Pending Orders: ${orderStats.pending}`,
-        `Processing Orders: ${orderStats.processing}`,
-        `Completed Orders: ${orderStats.completed}`,
-        `Cancelled Orders: ${orderStats.cancelled}`,
-        '',
-        '=== DETAILED ORDER LIST ===',
-        // Enhanced headers
-        [
-          'Order ID',
-          'Short ID',
-          'Order Date',
-          'Order Time',
-          'Customer Email',
-          'Customer Role',
-          'Order Status',
-          'Items Count',
-          'Subtotal (KES)',
-          'Tax Amount (KES)',
-          'Discount (KES)',
-          'Shipping (KES)',
-          'Final Total (KES)',
-          'Payment Method',
-          'Payment Status',
-          'Payment Reference',
-          'Revenue Category'
-        ].join(','),
-        // Enhanced data rows
-        ...filteredOrders.map(order => {
-          const calculation = order.order_calculations?.[0];
-          const payment = order.payments?.[0];
-          const orderDate = new Date(order.created_at);
-          const orderTotal = calculation?.total_amount || order.total || 0;
+        '=== DAILY ORDER SUMMARY ===',
+        'Date,Order ID,Employee Email,Status,Items Count,Total (KES),Payment Method,Payment Status',
+        
+        // Generate daily sections
+        ...sortedDates.flatMap(date => {
+          const dayOrders = ordersByDate[date];
+          const dayTotal = dayOrders.reduce((sum, order) => {
+            const orderTotal = order.order_calculations?.[0]?.total_amount || order.total || 0;
+            return sum + orderTotal;
+          }, 0);
           
           return [
-            `"${order.id}"`, // Full ID with quotes to prevent Excel issues
-            `"${order.id.slice(0, 8)}"`, // Short ID for easy reference
-            orderDate.toLocaleDateString('en-KE'),
-            orderDate.toLocaleTimeString('en-KE'),
-            `"${order.profiles?.email || 'N/A'}"`,
-            order.profiles?.role || 'customer',
-            order.status.toUpperCase(),
-            order.order_items?.length || 0,
-            (calculation?.subtotal || 0).toFixed(2),
-            (calculation?.tax_amount || 0).toFixed(2),
-            (calculation?.discount_amount || 0).toFixed(2),
-            (calculation?.shipping_fee || 0).toFixed(2),
-            orderTotal.toFixed(2),
-            payment?.payment_method?.toUpperCase() || 'N/A',
-            payment?.status?.toUpperCase() || 'PENDING',
-            `"${payment?.mpesa_reference || 'N/A'}"`,
-            orderTotal > 5000 ? 'High Value' : orderTotal > 1000 ? 'Medium Value' : 'Standard'
-          ].join(',');
-        }),
-        '',
-        '=== ORDER ITEMS BREAKDOWN ===',
-        [
-          'Order ID',
-          'Short ID',
-          'Product Name',
-          'Product Category',
-          'Variant Size',
-          'Quantity',
-          'Unit Price (KES)',
-          'Line Total (KES)',
-          'Customer Email'
-        ].join(','),
-        // Order items details
-        ...filteredOrders.flatMap(order => 
-          (order.order_items || []).map(item => {
-            const snapshot = item.order_product_snapshots?.[0];
-            const productName = snapshot?.product_name || `Item #${item.id.slice(0, 8)}`;
-            const priceAtTime = snapshot?.price_at_time || item.price || 0;
+            '', // Empty line before each day
+            `=== ${date.toUpperCase()} - ${dayOrders.length} Orders - Total: KES ${dayTotal.toLocaleString('en-KE')} ===`,
             
-            return [
-              `"${order.id}"`,
-              `"${order.id.slice(0, 8)}"`,
-              `"${productName}"`,
-              `"${snapshot?.product_category || 'N/A'}"`,
-              `"${snapshot?.variant_size || 'Standard'}"`,
-              item.quantity,
-              priceAtTime.toFixed(2),
-              (item.quantity * priceAtTime).toFixed(2),
-              `"${order.profiles?.email || 'N/A'}"`
-            ].join(',');
-          })
-        ),
+            // Order summary for the day
+            ...dayOrders.map(order => {
+              const payment = order.payments?.[0];
+              const orderTotal = order.order_calculations?.[0]?.total_amount || order.total || 0;
+              const paymentMethod = payment?.payment_method === 'mpesa' ? 'Mpesa' : 
+                                   payment?.payment_method === 'cash' ? 'Cash' : 'N/A';
+              const paymentStatus = payment?.status === 'completed' ? 'Completed' : 
+                                   payment?.status === 'cancelled' ? 'Cancelled' : 'Pending';
+              
+              return [
+                date,
+                `"${order.id.slice(0, 8)}"`,
+                `"${order.profiles?.email || 'N/A'}"`,
+                order.status.charAt(0).toUpperCase() + order.status.slice(1),
+                order.order_items?.length || 0,
+                orderTotal.toFixed(2),
+                paymentMethod,
+                paymentStatus
+              ].join(',');
+            }),
+            
+            '', // Empty line
+            `--- Product Details for ${date} ---`,
+            'Product Name,Quantity,Unit Price (KES),Total Price (KES)',
+            
+            // Product breakdown for the day
+            ...dayOrders.flatMap(order => 
+              (order.order_items || []).map(item => {
+                const snapshot = item.order_product_snapshots?.[0];
+                const productName = snapshot?.product_name || `Item #${item.id.slice(0, 8)}`;
+                const priceAtTime = snapshot?.price_at_time || item.price || 0;
+                
+                return [
+                  `"${productName}"`,
+                  item.quantity,
+                  priceAtTime.toFixed(2),
+                  (item.quantity * priceAtTime).toFixed(2)
+                ].join(',');
+              })
+            )
+          ];
+        }),
+        
         '',
-        '=== PAYMENT ANALYSIS ===',
-        // Payment method summary
-        'Payment Method,Count,Total Amount (KES),Percentage',
+        '=== OVERALL SUMMARY ===',
+        'Payment Method Summary:',
         ...(() => {
           const paymentStats = filteredOrders.reduce((acc, order) => {
-            const method = order.payments?.[0]?.payment_method?.toUpperCase() || 'UNKNOWN';
+            const method = order.payments?.[0]?.payment_method === 'mpesa' ? 'Mpesa' :
+                          order.payments?.[0]?.payment_method === 'cash' ? 'Cash' : 'Unknown';
             const amount = order.order_calculations?.[0]?.total_amount || order.total || 0;
             
             if (!acc[method]) {
@@ -441,47 +431,44 @@ const Orders = () => {
             return acc;
           }, {} as Record<string, { count: number; total: number }>);
           
-          return Object.entries(paymentStats).map(([method, stats]) => {
-            const percentage = filteredOrders.length > 0 ? (stats.count / filteredOrders.length * 100).toFixed(1) : '0';
-            return `${method},${stats.count},${stats.total.toFixed(2)},${percentage}%`;
-          });
+          return [
+            'Payment Method,Count,Total Amount (KES)',
+            ...Object.entries(paymentStats).map(([method, stats]) => 
+              `${method},${stats.count},${stats.total.toFixed(2)}`
+            )
+          ];
         })(),
+        
         '',
-        '=== MONTHLY TRENDS (if applicable) ===',
-        // Monthly breakdown
-        'Month,Orders Count,Revenue (KES),Average Order (KES)',
-        ...(() => {
-          const monthlyStats = filteredOrders.reduce((acc, order) => {
-            const month = new Date(order.created_at).toLocaleDateString('en-KE', { 
-              year: 'numeric', 
-              month: 'long' 
-            });
-            const amount = order.order_calculations?.[0]?.total_amount || order.total || 0;
-            
-            if (!acc[month]) {
-              acc[month] = { count: 0, total: 0 };
-            }
-            acc[month].count++;
-            acc[month].total += amount;
-            
-            return acc;
-          }, {} as Record<string, { count: number; total: number }>);
+        'Order Status Summary:',
+        'Status,Count',
+        `Pending,${orderStats.pending}`,
+        `Processing,${orderStats.processing}`,
+        `Completed,${orderStats.completed}`,
+        `Cancelled,${orderStats.cancelled}`,
+        
+        '',
+        'Daily Totals:',
+        'Date,Orders Count,Revenue (KES)',
+        ...sortedDates.map(date => {
+          const dayOrders = ordersByDate[date];
+          const dayTotal = dayOrders.reduce((sum, order) => {
+            const orderTotal = order.order_calculations?.[0]?.total_amount || order.total || 0;
+            return sum + orderTotal;
+          }, 0);
           
-          return Object.entries(monthlyStats).map(([month, stats]) => {
-            const average = stats.count > 0 ? (stats.total / stats.count) : 0;
-            return `"${month}",${stats.count},${stats.total.toFixed(2)},${average.toFixed(2)}`;
-          });
-        })(),
+          return `"${date}",${dayOrders.length},${dayTotal.toFixed(2)}`;
+        }),
+        
         '',
-        `# End of Report - Generated by Penchic Farm Admin System`,
-        `# Contact: admin@penchicfarm.co.ke for any queries`
+        'End of Report - Generated by Penchic Farm Admin System'
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `penchic-farm-comprehensive-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
+      a.download = `penchic-farm-daily-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
