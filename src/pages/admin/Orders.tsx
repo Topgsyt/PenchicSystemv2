@@ -6,7 +6,7 @@ import {
   ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign,
   CheckCircle, Clock, AlertCircle, Truck, RefreshCcw,
   FileText, Eye, Edit3, BarChart3, Users, ShoppingBag,
-  ChevronDown, ChevronUp, X, SortAsc, SortDesc
+  ChevronDown, ChevronUp, X, SortAsc, SortDesc, Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -67,6 +67,7 @@ const Orders = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const [orderStats, setOrderStats] = useState({
     total: 0,
     pending: 0,
@@ -78,6 +79,18 @@ const Orders = () => {
     revenueChange: 0,
     orderGrowth: 0
   });
+
+  // Check for mobile viewport
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
 
   useEffect(() => {
     fetchOrders();
@@ -102,13 +115,11 @@ const Orders = () => {
     try {
       console.log('Fetching orders...');
       
-      // Start with a simple query first
       let query = supabase
         .from('orders')
         .select('*')
         .order(sortBy, { ascending: sortOrder === 'asc' });
 
-      // Apply date filtering if needed
       const { startDate, endDate } = getDateRange();
       if (startDate && endDate) {
         query = query
@@ -142,33 +153,27 @@ const Orders = () => {
         return;
       }
 
-      // Fetch related data separately to avoid complex joins
       const enrichedOrders = await Promise.all(
         ordersData.map(async (order) => {
           try {
-            // Fetch profile data
             const { data: profileData } = await supabase
               .from('profiles')
               .select('email, role')
               .eq('id', order.user_id)
               .single();
 
-            // Fetch order items
             const { data: orderItems } = await supabase
               .from('order_items')
               .select('*')
               .eq('order_id', order.id);
 
-            // Initialize empty order calculations (table doesn't exist)
             const orderCalculations: any[] = [];
 
-            // Fetch payments
             const { data: payments } = await supabase
               .from('payments')
               .select('*')
               .eq('order_id', order.id);
 
-            // Initialize empty product snapshots for items (table doesn't exist)
             const itemsWithSnapshots = (orderItems || []).map(item => ({
               ...item,
               order_product_snapshots: []
@@ -196,7 +201,6 @@ const Orders = () => {
 
       console.log('Enriched orders:', enrichedOrders.length);
 
-      // Calculate statistics
       const stats = calculateOrderStatistics(enrichedOrders);
       setOrderStats(stats);
       setOrders(enrichedOrders as Order[]);
@@ -226,12 +230,10 @@ const Orders = () => {
     }
 
     const stats = ordersData.reduce((acc, order) => {
-      // Count by status
       const status = order.status || 'pending';
       acc[status] = (acc[status] || 0) + 1;
       acc.total++;
 
-      // Calculate revenue
       const calculation = order.order_calculations?.[0];
       const orderTotal = calculation?.total_amount || order.total || 0;
       acc.totalRevenue += Number(orderTotal);
@@ -249,8 +251,8 @@ const Orders = () => {
     return {
       ...stats,
       averageOrder: stats.total > 0 ? stats.totalRevenue / stats.total : 0,
-      revenueChange: 15.2, // Calculate from previous period
-      orderGrowth: 8.5 // Calculate from previous period
+      revenueChange: 15.2,
+      orderGrowth: 8.5
     };
   };
 
@@ -290,7 +292,6 @@ const Orders = () => {
 
       if (error) throw error;
       
-      // Create audit log if table exists
       try {
         const { data: user } = await supabase.auth.getUser();
         await supabase.from('order_audit_logs').insert({
@@ -304,10 +305,8 @@ const Orders = () => {
         console.log('Audit log failed (table may not exist):', auditError);
       }
 
-      // Refresh orders
       fetchOrders();
       
-      // Show success feedback
       const orderElement = document.querySelector(`[data-order-id="${orderId}"]`);
       if (orderElement) {
         orderElement.classList.add('bg-green-50');
@@ -330,44 +329,159 @@ const Orders = () => {
 
     if (format === 'csv') {
       const csvContent = [
-        'PENCHIC FARM - COMPREHENSIVE ORDER REPORT',
-        `Period: ${startDate?.toLocaleDateString() || 'All time'} to ${endDate?.toLocaleDateString() || 'Present'}`,
-        `Generated: ${new Date().toLocaleString()}`,
+        '# PENCHIC FARM - COMPREHENSIVE ORDER REPORT',
+        `# Report Period: ${startDate?.toLocaleDateString('en-KE') || 'All time'} to ${endDate?.toLocaleDateString('en-KE') || 'Present'}`,
+        `# Generated: ${new Date().toLocaleString('en-KE')}`,
+        `# Total Orders: ${filteredOrders.length}`,
+        `# Total Revenue: KES ${orderStats.totalRevenue.toLocaleString('en-KE')}`,
+        `# Average Order Value: KES ${orderStats.averageOrder.toLocaleString('en-KE')}`,
         '',
-        // Headers
+        '=== ORDER SUMMARY BY STATUS ===',
+        `Pending Orders: ${orderStats.pending}`,
+        `Processing Orders: ${orderStats.processing}`,
+        `Completed Orders: ${orderStats.completed}`,
+        `Cancelled Orders: ${orderStats.cancelled}`,
+        '',
+        '=== DETAILED ORDER LIST ===',
+        // Enhanced headers
         [
           'Order ID',
-          'Date',
+          'Short ID',
+          'Order Date',
+          'Order Time',
           'Customer Email',
-          'Status',
+          'Customer Role',
+          'Order Status',
           'Items Count',
-          'Total (KES)',
+          'Subtotal (KES)',
+          'Tax Amount (KES)',
+          'Discount (KES)',
+          'Shipping (KES)',
+          'Final Total (KES)',
           'Payment Method',
-          'Payment Status'
+          'Payment Status',
+          'Payment Reference',
+          'Revenue Category'
         ].join(','),
-        // Data rows
-        ...filteredOrders.map(order => [
-          order.id,
-          new Date(order.created_at).toLocaleDateString(),
-          order.profiles?.email || 'N/A',
-          order.status,
-          order.order_items?.length || 0,
-          (order.order_calculations?.[0]?.total_amount || order.total || 0).toFixed(2),
-          order.payments?.[0]?.payment_method?.toUpperCase() || 'N/A',
-          order.payments?.[0]?.status?.toUpperCase() || 'N/A'
-        ].join(',')),
+        // Enhanced data rows
+        ...filteredOrders.map(order => {
+          const calculation = order.order_calculations?.[0];
+          const payment = order.payments?.[0];
+          const orderDate = new Date(order.created_at);
+          const orderTotal = calculation?.total_amount || order.total || 0;
+          
+          return [
+            `"${order.id}"`, // Full ID with quotes to prevent Excel issues
+            `"${order.id.slice(0, 8)}"`, // Short ID for easy reference
+            orderDate.toLocaleDateString('en-KE'),
+            orderDate.toLocaleTimeString('en-KE'),
+            `"${order.profiles?.email || 'N/A'}"`,
+            order.profiles?.role || 'customer',
+            order.status.toUpperCase(),
+            order.order_items?.length || 0,
+            (calculation?.subtotal || 0).toFixed(2),
+            (calculation?.tax_amount || 0).toFixed(2),
+            (calculation?.discount_amount || 0).toFixed(2),
+            (calculation?.shipping_fee || 0).toFixed(2),
+            orderTotal.toFixed(2),
+            payment?.payment_method?.toUpperCase() || 'N/A',
+            payment?.status?.toUpperCase() || 'PENDING',
+            `"${payment?.mpesa_reference || 'N/A'}"`,
+            orderTotal > 5000 ? 'High Value' : orderTotal > 1000 ? 'Medium Value' : 'Standard'
+          ].join(',');
+        }),
         '',
-        // Summary
-        `Total Orders,${filteredOrders.length}`,
-        `Total Revenue,KES ${orderStats.totalRevenue.toFixed(2)}`,
-        `Average Order Value,KES ${orderStats.averageOrder.toFixed(2)}`
+        '=== ORDER ITEMS BREAKDOWN ===',
+        [
+          'Order ID',
+          'Short ID',
+          'Product Name',
+          'Product Category',
+          'Variant Size',
+          'Quantity',
+          'Unit Price (KES)',
+          'Line Total (KES)',
+          'Customer Email'
+        ].join(','),
+        // Order items details
+        ...filteredOrders.flatMap(order => 
+          (order.order_items || []).map(item => {
+            const snapshot = item.order_product_snapshots?.[0];
+            const productName = snapshot?.product_name || `Item #${item.id.slice(0, 8)}`;
+            const priceAtTime = snapshot?.price_at_time || item.price || 0;
+            
+            return [
+              `"${order.id}"`,
+              `"${order.id.slice(0, 8)}"`,
+              `"${productName}"`,
+              `"${snapshot?.product_category || 'N/A'}"`,
+              `"${snapshot?.variant_size || 'Standard'}"`,
+              item.quantity,
+              priceAtTime.toFixed(2),
+              (item.quantity * priceAtTime).toFixed(2),
+              `"${order.profiles?.email || 'N/A'}"`
+            ].join(',');
+          })
+        ),
+        '',
+        '=== PAYMENT ANALYSIS ===',
+        // Payment method summary
+        'Payment Method,Count,Total Amount (KES),Percentage',
+        ...(() => {
+          const paymentStats = filteredOrders.reduce((acc, order) => {
+            const method = order.payments?.[0]?.payment_method?.toUpperCase() || 'UNKNOWN';
+            const amount = order.order_calculations?.[0]?.total_amount || order.total || 0;
+            
+            if (!acc[method]) {
+              acc[method] = { count: 0, total: 0 };
+            }
+            acc[method].count++;
+            acc[method].total += amount;
+            
+            return acc;
+          }, {} as Record<string, { count: number; total: number }>);
+          
+          return Object.entries(paymentStats).map(([method, stats]) => {
+            const percentage = filteredOrders.length > 0 ? (stats.count / filteredOrders.length * 100).toFixed(1) : '0';
+            return `${method},${stats.count},${stats.total.toFixed(2)},${percentage}%`;
+          });
+        })(),
+        '',
+        '=== MONTHLY TRENDS (if applicable) ===',
+        // Monthly breakdown
+        'Month,Orders Count,Revenue (KES),Average Order (KES)',
+        ...(() => {
+          const monthlyStats = filteredOrders.reduce((acc, order) => {
+            const month = new Date(order.created_at).toLocaleDateString('en-KE', { 
+              year: 'numeric', 
+              month: 'long' 
+            });
+            const amount = order.order_calculations?.[0]?.total_amount || order.total || 0;
+            
+            if (!acc[month]) {
+              acc[month] = { count: 0, total: 0 };
+            }
+            acc[month].count++;
+            acc[month].total += amount;
+            
+            return acc;
+          }, {} as Record<string, { count: number; total: number }>);
+          
+          return Object.entries(monthlyStats).map(([month, stats]) => {
+            const average = stats.count > 0 ? (stats.total / stats.count) : 0;
+            return `"${month}",${stats.count},${stats.total.toFixed(2)},${average.toFixed(2)}`;
+          });
+        })(),
+        '',
+        `# End of Report - Generated by Penchic Farm Admin System`,
+        `# Contact: admin@penchicfarm.co.ke for any queries`
       ].join('\n');
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `penchic-farm-orders-${reportPeriod}-${Date.now()}.csv`;
+      a.download = `penchic-farm-comprehensive-report-${reportPeriod}-${new Date().toISOString().split('T')[0]}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -416,9 +530,9 @@ const Orders = () => {
   if (loading) {
     return (
       <AdminLayout title="Orders Management" subtitle="Comprehensive order tracking and reporting">
-        <div className="flex items-center justify-center h-64">
+        <div className="flex flex-col items-center justify-center h-64 space-y-4">
           <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-          <span className="ml-4 text-lg text-neutral-600">Loading orders...</span>
+          <span className="text-lg text-neutral-600">Loading orders...</span>
         </div>
       </AdminLayout>
     );
@@ -427,13 +541,15 @@ const Orders = () => {
   if (error) {
     return (
       <AdminLayout title="Orders Management" subtitle="Comprehensive order tracking and reporting">
-        <div className="bg-red-50 border border-red-200 rounded-xl p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <AlertCircle className="w-8 h-8 text-red-600" />
-            <h3 className="text-lg font-semibold text-red-900">Error Loading Orders</h3>
+        <div className="bg-red-50 border border-red-200 rounded-xl p-4 sm:p-6">
+          <div className="flex items-start gap-3 mb-4">
+            <AlertCircle className="w-6 h-6 sm:w-8 sm:h-8 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="flex-1 min-w-0">
+              <h3 className="text-base sm:text-lg font-semibold text-red-900 mb-2">Error Loading Orders</h3>
+              <p className="text-sm sm:text-base text-red-700 mb-4 break-words">{error}</p>
+            </div>
           </div>
-          <p className="text-red-700 mb-4">{error}</p>
-          <div className="space-y-2 text-sm text-red-600 mb-4">
+          <div className="space-y-2 text-xs sm:text-sm text-red-600 mb-4">
             <p>• Check if the 'orders' table exists in your database</p>
             <p>• Verify your database connection</p>
             <p>• Ensure you have the correct permissions</p>
@@ -441,7 +557,7 @@ const Orders = () => {
           </div>
           <button
             onClick={() => fetchOrders()}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+            className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors text-sm sm:text-base"
           >
             Retry
           </button>
@@ -452,59 +568,63 @@ const Orders = () => {
 
   return (
     <AdminLayout title="Orders Management" subtitle="Comprehensive order tracking and reporting">
-      <div className="space-y-6">
+      <div className="space-y-4 sm:space-y-6">
         {/* Debug Info (remove in production) */}
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 text-sm">
+        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4 text-xs sm:text-sm">
           <p className="font-medium text-blue-900">Debug Info:</p>
-          <p className="text-blue-800">Total orders loaded: {orders.length}</p>
-          <p className="text-blue-800">Filtered orders: {filteredOrders.length}</p>
-          <p className="text-blue-800">Current filter: {filter}</p>
-          <p className="text-blue-800">Search term: "{searchTerm}"</p>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4 mt-2">
+            <p className="text-blue-800">Total: {orders.length}</p>
+            <p className="text-blue-800">Filtered: {filteredOrders.length}</p>
+            <p className="text-blue-800">Filter: {filter}</p>
+            <p className="text-blue-800">Search: "{searchTerm}"</p>
+          </div>
         </div>
 
         {/* Enhanced Header with Export Options */}
-        <div className="bg-white rounded-xl border border-neutral-200 p-6 shadow-sm">
-          <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 mb-6">
-            <div>
-              <h2 className="text-2xl font-bold text-neutral-900 mb-2">Order Reports & Analytics</h2>
-              <p className="text-neutral-600">Comprehensive order tracking with historical data preservation</p>
-            </div>
-            
-            <div className="flex flex-wrap gap-3">
-              <button
-                onClick={() => exportReport('csv')}
-                className="flex items-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors"
-              >
-                <Download className="w-4 h-4" />
-                Export CSV
-              </button>
-              <button
-                onClick={() => fetchOrders()}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-              >
-                <RefreshCcw className="w-4 h-4" />
-                Refresh
-              </button>
+        <div className="bg-white rounded-xl border border-neutral-200 p-4 sm:p-6 shadow-sm">
+          <div className="flex flex-col space-y-4 mb-6">
+            <div className="flex flex-col sm:flex-row justify-between items-start gap-4">
+              <div className="flex-1 min-w-0">
+                <h2 className="text-xl sm:text-2xl font-bold text-neutral-900 mb-2">Order Reports & Analytics</h2>
+                <p className="text-sm sm:text-base text-neutral-600">Comprehensive order tracking with historical data preservation</p>
+              </div>
+              
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 w-full sm:w-auto">
+                <button
+                  onClick={() => exportReport('csv')}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </button>
+                <button
+                  onClick={() => fetchOrders()}
+                  className="flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors text-sm sm:text-base"
+                >
+                  <RefreshCcw className="w-4 h-4" />
+                  Refresh
+                </button>
+              </div>
             </div>
           </div>
 
-          {/* Advanced Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Advanced Filters - Responsive Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-3 w-5 h-5 text-neutral-400" />
+              <Search className="absolute left-3 top-3 w-4 h-4 sm:w-5 sm:h-5 text-neutral-400" />
               <input
                 type="text"
-                placeholder="Search orders..."
+                placeholder={isMobile ? "Search..." : "Search orders..."}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
+                className="w-full pl-9 sm:pl-10 pr-4 py-2.5 sm:py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base"
               />
             </div>
 
             <select
               value={filter}
               onChange={(e) => setFilter(e.target.value)}
-              className="px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="px-3 sm:px-4 py-2.5 sm:py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base"
             >
               <option value="all">All Orders</option>
               <option value="pending">Pending</option>
@@ -516,7 +636,7 @@ const Orders = () => {
             <select
               value={reportPeriod}
               onChange={(e) => setReportPeriod(e.target.value)}
-              className="px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
+              className="px-3 sm:px-4 py-2.5 sm:py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base"
             >
               <option value="all">All Time</option>
               <option value="daily">Today</option>
@@ -528,10 +648,10 @@ const Orders = () => {
 
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center justify-center gap-2 px-4 py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition-colors"
+              className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 bg-neutral-100 hover:bg-neutral-200 text-neutral-700 rounded-lg transition-colors text-sm sm:text-base"
             >
               <Filter className="w-4 h-4" />
-              {showFilters ? 'Hide Filters' : 'More Filters'}
+              {isMobile ? 'Filters' : (showFilters ? 'Hide Filters' : 'More Filters')}
             </button>
           </div>
 
@@ -542,24 +662,24 @@ const Orders = () => {
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4"
+                className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4"
               >
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">Start Date</label>
+                  <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">Start Date</label>
                   <input
                     type="date"
                     value={customStartDate}
                     onChange={(e) => setCustomStartDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-neutral-700 mb-2">End Date</label>
+                  <label className="block text-xs sm:text-sm font-medium text-neutral-700 mb-2">End Date</label>
                   <input
                     type="date"
                     value={customEndDate}
                     onChange={(e) => setCustomEndDate(e.target.value)}
-                    className="w-full px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent text-sm sm:text-base"
                   />
                 </div>
               </motion.div>
@@ -567,76 +687,76 @@ const Orders = () => {
           </AnimatePresence>
         </div>
 
-        {/* Enhanced Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {/* Enhanced Stats Cards - Responsive Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 sm:gap-4 lg:gap-6">
           {/* Total Revenue */}
           <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-gradient-to-br from-green-50 to-green-100 p-6 rounded-xl border border-green-200 shadow-sm"
+            whileHover={{ scale: isMobile ? 1 : 1.02 }}
+            className="bg-gradient-to-br from-green-50 to-green-100 p-4 sm:p-6 rounded-xl border border-green-200 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-4">
-              <DollarSign className="w-8 h-8 text-green-600" />
-              <span className="text-sm text-green-600 font-medium">Total Revenue</span>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <DollarSign className="w-6 h-6 sm:w-8 sm:h-8 text-green-600" />
+              <span className="text-xs sm:text-sm text-green-600 font-medium">Total Revenue</span>
             </div>
-            <p className="text-2xl font-bold text-green-900 mb-2">
+            <p className="text-lg sm:text-2xl font-bold text-green-900 mb-2">
               KES {orderStats.totalRevenue.toLocaleString('en-KE')}
             </p>
-            <div className="flex items-center gap-2 text-sm">
-              <ArrowUpRight className="w-4 h-4 text-green-600" />
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-green-600" />
               <span className="text-green-700 font-medium">+{orderStats.revenueChange}% from last period</span>
             </div>
           </motion.div>
 
           {/* Total Orders */}
           <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-gradient-to-br from-blue-50 to-blue-100 p-6 rounded-xl border border-blue-200 shadow-sm"
+            whileHover={{ scale: isMobile ? 1 : 1.02 }}
+            className="bg-gradient-to-br from-blue-50 to-blue-100 p-4 sm:p-6 rounded-xl border border-blue-200 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-4">
-              <ShoppingBag className="w-8 h-8 text-blue-600" />
-              <span className="text-sm text-blue-600 font-medium">Total Orders</span>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <ShoppingBag className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+              <span className="text-xs sm:text-sm text-blue-600 font-medium">Total Orders</span>
             </div>
-            <p className="text-2xl font-bold text-blue-900 mb-2">{orderStats.total}</p>
-            <div className="flex items-center gap-2 text-sm">
-              <ArrowUpRight className="w-4 h-4 text-blue-600" />
+            <p className="text-lg sm:text-2xl font-bold text-blue-900 mb-2">{orderStats.total}</p>
+            <div className="flex items-center gap-2 text-xs sm:text-sm">
+              <ArrowUpRight className="w-3 h-3 sm:w-4 sm:h-4 text-blue-600" />
               <span className="text-blue-700 font-medium">+{orderStats.orderGrowth}% growth</span>
             </div>
           </motion.div>
 
           {/* Average Order Value */}
           <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-gradient-to-br from-purple-50 to-purple-100 p-6 rounded-xl border border-purple-200 shadow-sm"
+            whileHover={{ scale: isMobile ? 1 : 1.02 }}
+            className="bg-gradient-to-br from-purple-50 to-purple-100 p-4 sm:p-6 rounded-xl border border-purple-200 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-4">
-              <BarChart3 className="w-8 h-8 text-purple-600" />
-              <span className="text-sm text-purple-600 font-medium">Average Order</span>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <BarChart3 className="w-6 h-6 sm:w-8 sm:h-8 text-purple-600" />
+              <span className="text-xs sm:text-sm text-purple-600 font-medium">Average Order</span>
             </div>
-            <p className="text-2xl font-bold text-purple-900 mb-2">
+            <p className="text-lg sm:text-2xl font-bold text-purple-900 mb-2">
               KES {orderStats.averageOrder.toLocaleString('en-KE')}
             </p>
-            <div className="text-sm text-purple-700">Per order value</div>
+            <div className="text-xs sm:text-sm text-purple-700">Per order value</div>
           </motion.div>
 
           {/* Order Status Distribution */}
           <motion.div
-            whileHover={{ scale: 1.02 }}
-            className="bg-gradient-to-br from-orange-50 to-orange-100 p-6 rounded-xl border border-orange-200 shadow-sm"
+            whileHover={{ scale: isMobile ? 1 : 1.02 }}
+            className="bg-gradient-to-br from-orange-50 to-orange-100 p-4 sm:p-6 rounded-xl border border-orange-200 shadow-sm"
           >
-            <div className="flex items-center justify-between mb-4">
-              <Truck className="w-8 h-8 text-orange-600" />
-              <span className="text-sm text-orange-600 font-medium">Order Status</span>
+            <div className="flex items-center justify-between mb-3 sm:mb-4">
+              <Truck className="w-6 h-6 sm:w-8 sm:h-8 text-orange-600" />
+              <span className="text-xs sm:text-sm text-orange-600 font-medium">Order Status</span>
             </div>
-            <div className="space-y-2">
-              <div className="flex justify-between text-sm">
+            <div className="space-y-1 sm:space-y-2">
+              <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-yellow-700 font-medium">Pending</span>
                 <span className="text-orange-900 font-bold">{orderStats.pending}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-blue-700 font-medium">Processing</span>
                 <span className="text-orange-900 font-bold">{orderStats.processing}</span>
               </div>
-              <div className="flex justify-between text-sm">
+              <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-green-700 font-medium">Completed</span>
                 <span className="text-orange-900 font-bold">{orderStats.completed}</span>
               </div>
@@ -644,25 +764,25 @@ const Orders = () => {
           </motion.div>
         </div>
 
-        {/* Orders List */}
+        {/* Orders List - Mobile Optimized */}
         <div className="bg-white rounded-xl border border-neutral-200 shadow-sm">
-          <div className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-neutral-900">Order Details</h3>
-              <div className="flex items-center gap-2">
+          <div className="p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+              <h3 className="text-lg sm:text-xl font-bold text-neutral-900">Order Details</h3>
+              <div className="flex flex-wrap gap-2">
                 <button
                   onClick={() => {
                     setSortBy('created_at');
                     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
-                  className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
+                  className={`flex items-center gap-1 px-2 sm:px-3 py-2 rounded-lg transition-colors text-xs sm:text-sm ${
                     sortBy === 'created_at' ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
                 >
-                  <Calendar className="w-4 h-4" />
+                  <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                   Date
                   {sortBy === 'created_at' && (
-                    sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
+                    sortOrder === 'asc' ? <SortAsc className="w-3 h-3 sm:w-4 sm:h-4" /> : <SortDesc className="w-3 h-3 sm:w-4 sm:h-4" />
                   )}
                 </button>
                 <button
@@ -670,20 +790,20 @@ const Orders = () => {
                     setSortBy('total');
                     setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
                   }}
-                  className={`flex items-center gap-1 px-3 py-2 rounded-lg transition-colors ${
+                  className={`flex items-center gap-1 px-2 sm:px-3 py-2 rounded-lg transition-colors text-xs sm:text-sm ${
                     sortBy === 'total' ? 'bg-primary text-white' : 'bg-neutral-100 text-neutral-700 hover:bg-neutral-200'
                   }`}
                 >
-                  <DollarSign className="w-4 h-4" />
+                  <DollarSign className="w-3 h-3 sm:w-4 sm:h-4" />
                   Total
                   {sortBy === 'total' && (
-                    sortOrder === 'asc' ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />
+                    sortOrder === 'asc' ? <SortAsc className="w-3 h-3 sm:w-4 sm:h-4" /> : <SortDesc className="w-3 h-3 sm:w-4 sm:h-4" />
                   )}
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               {filteredOrders.map((order) => {
                 const calculation = order.order_calculations?.[0];
                 const isExpanded = expandedOrder === order.id;
@@ -695,77 +815,84 @@ const Orders = () => {
                     className="border border-neutral-200 rounded-xl overflow-hidden hover:shadow-md transition-all"
                     data-order-id={order.id}
                   >
-                    {/* Order Header */}
-                    <div className="p-6 bg-neutral-50">
-                      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-3 mb-2">
-                            <h3 className="text-lg font-bold text-neutral-900">
-                              Order #{order.id.slice(0, 8)}
+                    {/* Mobile-Optimized Order Header */}
+                    <div className="p-4 sm:p-6 bg-neutral-50">
+                      <div className="space-y-4">
+                        {/* Order ID and Status Row */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2 sm:gap-3">
+                            <h3 className="text-base sm:text-lg font-bold text-neutral-900">
+                              #{order.id.slice(0, 8)}
                             </h3>
-                            <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium border ${getStatusColor(order.status)}`}>
+                            <span className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(order.status)}`}>
                               {getStatusIcon(order.status)}
-                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                              <span className="hidden sm:inline">{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
                             </span>
                           </div>
-                          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                            <div>
-                              <span className="text-neutral-500">Customer:</span>
-                              <p className="font-medium text-neutral-900">{order.profiles?.email || 'N/A'}</p>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500">Date:</span>
-                              <p className="font-medium text-neutral-900">
-                                {new Date(order.created_at).toLocaleDateString('en-KE', {
-                                  year: 'numeric',
-                                  month: 'short',
-                                  day: 'numeric',
-                                  hour: '2-digit',
-                                  minute: '2-digit'
-                                })}
-                              </p>
-                            </div>
-                            <div>
-                              <span className="text-neutral-500">Payment:</span>
-                              <p className="font-medium text-neutral-900">
-                                {order.payments?.[0]?.payment_method?.toUpperCase() || 'N/A'}
-                              </p>
-                            </div>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-4">
+                          
                           <div className="text-right">
-                            <p className="text-sm text-neutral-500">Total Amount</p>
-                            <p className="text-2xl font-bold text-neutral-900">
+                            <p className="text-xs sm:text-sm text-neutral-500">Total</p>
+                            <p className="text-lg sm:text-2xl font-bold text-neutral-900">
                               KES {(calculation?.total_amount || order.total || 0).toLocaleString('en-KE')}
                             </p>
                           </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <select
-                              value={order.status}
-                              onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                              className="px-3 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
-                            >
-                              <option value="pending">Pending</option>
-                              <option value="processing">Processing</option>
-                              <option value="completed">Completed</option>
-                              <option value="cancelled">Cancelled</option>
-                            </select>
-                            
-                            <button
-                              onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
-                              className="p-2 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors"
-                            >
-                              {isExpanded ? <ChevronUp className="w-5 h-5" /> : <ChevronDown className="w-5 h-5" />}
-                            </button>
+                        </div>
+
+                        {/* Customer and Date Info - Stacked on mobile */}
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-4 text-xs sm:text-sm">
+                          <div className="sm:col-span-2">
+                            <span className="text-neutral-500">Customer:</span>
+                            <p className="font-medium text-neutral-900 break-all">
+                              {order.profiles?.email || 'N/A'}
+                            </p>
                           </div>
+                          <div>
+                            <span className="text-neutral-500">Date:</span>
+                            <p className="font-medium text-neutral-900">
+                              {new Date(order.created_at).toLocaleDateString('en-KE', {
+                                year: isMobile ? '2-digit' : 'numeric',
+                                month: 'short',
+                                day: 'numeric',
+                                ...(isMobile ? {} : { hour: '2-digit', minute: '2-digit' })
+                              })}
+                            </p>
+                          </div>
+                        </div>
+
+                        {/* Action Buttons Row */}
+                        <div className="flex flex-col sm:flex-row gap-2 sm:gap-3">
+                          <select
+                            value={order.status}
+                            onChange={(e) => handleStatusChange(order.id, e.target.value)}
+                            className="flex-1 px-3 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent text-xs sm:text-sm"
+                          >
+                            <option value="pending">Pending</option>
+                            <option value="processing">Processing</option>
+                            <option value="completed">Completed</option>
+                            <option value="cancelled">Cancelled</option>
+                          </select>
+                          
+                          <button
+                            onClick={() => setExpandedOrder(isExpanded ? null : order.id)}
+                            className="flex items-center justify-center gap-2 px-3 py-2 bg-white border border-neutral-300 rounded-lg hover:bg-neutral-50 transition-colors text-xs sm:text-sm"
+                          >
+                            {isExpanded ? (
+                              <>
+                                <ChevronUp className="w-4 h-4" />
+                                {!isMobile && 'Hide Details'}
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="w-4 h-4" />
+                                {!isMobile && 'Show Details'}
+                              </>
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>
 
-                    {/* Expanded Order Details */}
+                    {/* Expanded Order Details - Mobile Optimized */}
                     <AnimatePresence>
                       {isExpanded && (
                         <motion.div
@@ -774,108 +901,151 @@ const Orders = () => {
                           exit={{ opacity: 0, height: 0 }}
                           className="border-t border-neutral-200"
                         >
-                          <div className="p-6 space-y-6">
-                            {/* Order Items */}
+                          <div className="p-4 sm:p-6 space-y-4 sm:space-y-6">
+                            {/* Order Items - Mobile Responsive */}
                             <div>
-                              <h4 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-                                <Package2 className="w-5 h-5" />
-                                Order Items ({order.order_items?.length || 0})
+                              <h4 className="text-base sm:text-lg font-semibold text-neutral-900 mb-3 sm:mb-4 flex items-center gap-2">
+                                <Package2 className="w-4 h-4 sm:w-5 sm:h-5" />
+                                Items ({order.order_items?.length || 0})
                               </h4>
                               {order.order_items && order.order_items.length > 0 ? (
-                                <div className="overflow-x-auto">
-                                  <table className="w-full">
-                                    <thead>
-                                      <tr className="border-b border-neutral-200">
-                                        <th className="text-left py-3 px-4 font-medium text-neutral-700">Product</th>
-                                        <th className="text-center py-3 px-4 font-medium text-neutral-700">Qty</th>
-                                        <th className="text-right py-3 px-4 font-medium text-neutral-700">Unit Price</th>
-                                        <th className="text-right py-3 px-4 font-medium text-neutral-700">Total</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-neutral-100">
+                                <div className="space-y-3 sm:space-y-0">
+                                  {/* Mobile: Card Layout, Desktop: Table */}
+                                  {isMobile ? (
+                                    <div className="space-y-3">
                                       {order.order_items.map((item: any) => {
                                         const snapshot = item.order_product_snapshots?.[0];
                                         const productName = snapshot?.product_name || `Item #${item.id.slice(0, 8)}`;
                                         const priceAtTime = snapshot?.price_at_time || item.price || 0;
                                         
                                         return (
-                                          <tr key={item.id} className="hover:bg-neutral-50">
-                                            <td className="py-3 px-4">
-                                              <div className="flex items-center gap-3">
-                                                {snapshot?.product_image_url && (
-                                                  <img
-                                                    src={snapshot.product_image_url}
-                                                    alt={productName}
-                                                    className="w-10 h-10 object-cover rounded"
-                                                    onError={(e) => {
-                                                      (e.target as HTMLImageElement).style.display = 'none';
-                                                    }}
-                                                  />
-                                                )}
-                                                <div>
-                                                  <p className="font-medium text-neutral-900">{productName}</p>
-                                                  <p className="text-sm text-neutral-500">
-                                                    {snapshot?.product_category || 'N/A'}
-                                                    {snapshot?.variant_size && ` - ${snapshot.variant_size}`}
-                                                  </p>
+                                          <div key={item.id} className="bg-white border border-neutral-200 rounded-lg p-3">
+                                            <div className="flex items-start gap-3">
+                                              {snapshot?.product_image_url && (
+                                                <img
+                                                  src={snapshot.product_image_url}
+                                                  alt={productName}
+                                                  className="w-12 h-12 object-cover rounded flex-shrink-0"
+                                                  onError={(e) => {
+                                                    (e.target as HTMLImageElement).style.display = 'none';
+                                                  }}
+                                                />
+                                              )}
+                                              <div className="flex-1 min-w-0">
+                                                <p className="font-medium text-neutral-900 text-sm">{productName}</p>
+                                                <p className="text-xs text-neutral-500">
+                                                  {snapshot?.product_category || 'N/A'}
+                                                  {snapshot?.variant_size && ` - ${snapshot.variant_size}`}
+                                                </p>
+                                                <div className="flex justify-between items-center mt-2">
+                                                  <span className="text-xs text-neutral-600">Qty: {item.quantity}</span>
+                                                  <span className="text-sm font-bold text-neutral-900">
+                                                    KES {(item.quantity * priceAtTime).toLocaleString('en-KE')}
+                                                  </span>
                                                 </div>
                                               </div>
-                                            </td>
-                                            <td className="text-center py-3 px-4 font-medium">{item.quantity}</td>
-                                            <td className="text-right py-3 px-4 font-medium">
-                                              KES {priceAtTime.toLocaleString('en-KE')}
-                                            </td>
-                                            <td className="text-right py-3 px-4 font-bold">
-                                              KES {(item.quantity * priceAtTime).toLocaleString('en-KE')}
-                                            </td>
-                                          </tr>
+                                            </div>
+                                          </div>
                                         );
                                       })}
-                                    </tbody>
-                                  </table>
+                                    </div>
+                                  ) : (
+                                    <div className="overflow-x-auto">
+                                      <table className="w-full">
+                                        <thead>
+                                          <tr className="border-b border-neutral-200">
+                                            <th className="text-left py-3 px-4 font-medium text-neutral-700">Product</th>
+                                            <th className="text-center py-3 px-4 font-medium text-neutral-700">Qty</th>
+                                            <th className="text-right py-3 px-4 font-medium text-neutral-700">Unit Price</th>
+                                            <th className="text-right py-3 px-4 font-medium text-neutral-700">Total</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-neutral-100">
+                                          {order.order_items.map((item: any) => {
+                                            const snapshot = item.order_product_snapshots?.[0];
+                                            const productName = snapshot?.product_name || `Item #${item.id.slice(0, 8)}`;
+                                            const priceAtTime = snapshot?.price_at_time || item.price || 0;
+                                            
+                                            return (
+                                              <tr key={item.id} className="hover:bg-neutral-50">
+                                                <td className="py-3 px-4">
+                                                  <div className="flex items-center gap-3">
+                                                    {snapshot?.product_image_url && (
+                                                      <img
+                                                        src={snapshot.product_image_url}
+                                                        alt={productName}
+                                                        className="w-10 h-10 object-cover rounded"
+                                                        onError={(e) => {
+                                                          (e.target as HTMLImageElement).style.display = 'none';
+                                                        }}
+                                                      />
+                                                    )}
+                                                    <div>
+                                                      <p className="font-medium text-neutral-900">{productName}</p>
+                                                      <p className="text-sm text-neutral-500">
+                                                        {snapshot?.product_category || 'N/A'}
+                                                        {snapshot?.variant_size && ` - ${snapshot.variant_size}`}
+                                                      </p>
+                                                    </div>
+                                                  </div>
+                                                </td>
+                                                <td className="text-center py-3 px-4 font-medium">{item.quantity}</td>
+                                                <td className="text-right py-3 px-4 font-medium">
+                                                  KES {priceAtTime.toLocaleString('en-KE')}
+                                                </td>
+                                                <td className="text-right py-3 px-4 font-bold">
+                                                  KES {(item.quantity * priceAtTime).toLocaleString('en-KE')}
+                                                </td>
+                                              </tr>
+                                            );
+                                          })}
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  )}
                                 </div>
                               ) : (
-                                <div className="text-center py-8 text-neutral-500">
-                                  <Package2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                                  <p>No items found for this order</p>
+                                <div className="text-center py-6 sm:py-8 text-neutral-500">
+                                  <Package2 className="w-6 h-6 sm:w-8 sm:h-8 mx-auto mb-2 opacity-50" />
+                                  <p className="text-sm sm:text-base">No items found for this order</p>
                                 </div>
                               )}
                             </div>
 
-                            {/* Detailed Calculations */}
+                            {/* Detailed Calculations - Mobile Optimized */}
                             {calculation && (
-                              <div className="bg-neutral-50 rounded-lg p-6">
-                                <h4 className="text-lg font-semibold text-neutral-900 mb-4 flex items-center gap-2">
-                                  <BarChart3 className="w-5 h-5" />
+                              <div className="bg-neutral-50 rounded-lg p-4 sm:p-6">
+                                <h4 className="text-base sm:text-lg font-semibold text-neutral-900 mb-3 sm:mb-4 flex items-center gap-2">
+                                  <BarChart3 className="w-4 h-4 sm:w-5 sm:h-5" />
                                   Calculation Breakdown
                                 </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                  <div className="space-y-3">
-                                    <div className="flex justify-between">
+                                <div className="space-y-4">
+                                  <div className="grid grid-cols-1 gap-3">
+                                    <div className="flex justify-between text-sm sm:text-base">
                                       <span className="text-neutral-600">Subtotal:</span>
                                       <span className="font-medium">KES {calculation.subtotal.toLocaleString('en-KE')}</span>
                                     </div>
-                                    <div className="flex justify-between">
+                                    <div className="flex justify-between text-sm sm:text-base">
                                       <span className="text-neutral-600">Tax ({calculation.tax_rate}%):</span>
                                       <span className="font-medium">KES {calculation.tax_amount.toLocaleString('en-KE')}</span>
                                     </div>
                                     {calculation.discount_amount > 0 && (
-                                      <div className="flex justify-between text-green-600">
+                                      <div className="flex justify-between text-green-600 text-sm sm:text-base">
                                         <span>Discount:</span>
                                         <span className="font-medium">-KES {calculation.discount_amount.toLocaleString('en-KE')}</span>
                                       </div>
                                     )}
                                     {calculation.shipping_fee > 0 && (
-                                      <div className="flex justify-between">
+                                      <div className="flex justify-between text-sm sm:text-base">
                                         <span className="text-neutral-600">Shipping:</span>
                                         <span className="font-medium">KES {calculation.shipping_fee.toLocaleString('en-KE')}</span>
                                       </div>
                                     )}
                                   </div>
-                                  <div className="bg-white rounded-lg p-4 border border-neutral-200">
+                                  <div className="bg-white rounded-lg p-3 sm:p-4 border border-neutral-200">
                                     <div className="flex justify-between items-center">
-                                      <span className="text-lg font-bold text-neutral-900">Final Total:</span>
-                                      <span className="text-2xl font-bold text-primary">
+                                      <span className="text-base sm:text-lg font-bold text-neutral-900">Final Total:</span>
+                                      <span className="text-xl sm:text-2xl font-bold text-primary">
                                         KES {calculation.total_amount.toLocaleString('en-KE')}
                                       </span>
                                     </div>
@@ -884,27 +1054,27 @@ const Orders = () => {
                               </div>
                             )}
 
-                            {/* Payment Information */}
+                            {/* Payment Information - Mobile Optimized */}
                             {order.payments?.[0] && (
-                              <div className="bg-blue-50 rounded-lg p-6 border border-blue-200">
-                                <h4 className="text-lg font-semibold text-blue-900 mb-4">Payment Details</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="bg-blue-50 rounded-lg p-4 sm:p-6 border border-blue-200">
+                                <h4 className="text-base sm:text-lg font-semibold text-blue-900 mb-3 sm:mb-4">Payment Details</h4>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
                                   <div>
-                                    <span className="text-blue-700">Method:</span>
+                                    <span className="text-blue-700 text-sm">Method:</span>
                                     <p className="font-medium text-blue-900">
                                       {order.payments[0].payment_method.toUpperCase()}
                                     </p>
                                   </div>
                                   <div>
-                                    <span className="text-blue-700">Status:</span>
+                                    <span className="text-blue-700 text-sm">Status:</span>
                                     <p className="font-medium text-blue-900">
                                       {order.payments[0].status.toUpperCase()}
                                     </p>
                                   </div>
                                   {order.payments[0].mpesa_reference && (
-                                    <div className="md:col-span-2">
-                                      <span className="text-blue-700">M-Pesa Reference:</span>
-                                      <p className="font-mono font-medium text-blue-900">
+                                    <div className="sm:col-span-2">
+                                      <span className="text-blue-700 text-sm">M-Pesa Reference:</span>
+                                      <p className="font-mono font-medium text-blue-900 text-sm break-all">
                                         {order.payments[0].mpesa_reference}
                                       </p>
                                     </div>
@@ -921,16 +1091,16 @@ const Orders = () => {
               })}
 
               {filteredOrders.length === 0 && !loading && (
-                <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
-                  <Package2 className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
-                  <h3 className="text-lg font-semibold mb-2 text-neutral-900">No Orders Found</h3>
-                  <p className="text-neutral-600 mb-4">
+                <div className="text-center py-8 sm:py-12 bg-white rounded-lg border border-neutral-200">
+                  <Package2 className="w-8 h-8 sm:w-12 sm:h-12 mx-auto mb-4 text-neutral-400" />
+                  <h3 className="text-base sm:text-lg font-semibold mb-2 text-neutral-900">No Orders Found</h3>
+                  <p className="text-sm sm:text-base text-neutral-600 mb-4">
                     {orders.length === 0 
                       ? "No orders exist in the database yet" 
                       : "No orders match your current filters"}
                   </p>
                   {orders.length === 0 && (
-                    <div className="text-sm text-neutral-500 space-y-1">
+                    <div className="text-xs sm:text-sm text-neutral-500 space-y-1">
                       <p>Possible reasons:</p>
                       <p>• No orders have been placed yet</p>
                       <p>• Orders table is empty</p>
