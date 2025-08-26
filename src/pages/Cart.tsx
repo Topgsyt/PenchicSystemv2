@@ -14,11 +14,35 @@ const Cart = () => {
   const navigate = useNavigate();
   const user = useStore((state) => state.user);
 
-  const handleCheckout = () => {
-    if (!user) {
-      navigate('/login');
-      return;
+  // Check if user can access cart (only admin and worker)
+  const canUseCart = user && ['admin', 'worker'].includes(user.role);
+
+  // Redirect if user cannot access cart
+  useEffect(() => {
+    if (!canUseCart) {
+      navigate('/');
     }
+  }, [canUseCart, navigate]);
+
+  if (!canUseCart) {
+    return (
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-4">
+        <div className="text-center">
+          <ShoppingBag className="w-16 h-16 mx-auto mb-4 text-neutral-400" />
+          <h2 className="text-2xl font-bold mb-2 text-neutral-900">Access Restricted</h2>
+          <p className="text-neutral-600 mb-4">Cart functionality is only available to staff members</p>
+          <button
+            onClick={() => navigate('/')}
+            className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary-dark transition-colors"
+          >
+            Return Home
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const handleCheckout = () => {
     navigate('/checkout');
   };
 

@@ -47,7 +47,7 @@ const Navbar = () => {
           </div>
 
           <div className="hidden md:flex items-center space-x-2 lg:space-x-4">
-            {user && (
+            {user && ['admin', 'worker'].includes(user.role) && (
               <Link to="/cart" className="text-gray-300 hover:text-white p-2 relative touch-target">
                 <ShoppingCart className="h-6 w-6" />
                 {totalCartQuantity > 0 && (
@@ -130,11 +130,17 @@ const Navbar = () => {
               )}
               {user && (
                 <Link to="/cart" className="text-gray-300 hover:text-white block px-3 py-3 rounded-md touch-target" onClick={() => setIsMenuOpen(false)}>
-                  Cart
-                  {totalCartQuantity > 0 && (
-                    <span className="ml-2 bg-accent text-white px-2 py-1 rounded-full text-xs">
-                      {totalCartQuantity}
-                    </span>
+                  {['admin', 'worker'].includes(user.role) ? (
+                    <>
+                      Cart
+                      {totalCartQuantity > 0 && (
+                        <span className="ml-2 bg-accent text-white px-2 py-1 rounded-full text-xs">
+                          {totalCartQuantity}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    'Account'
                   )}
                 </Link>
               )}

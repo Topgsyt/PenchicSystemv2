@@ -32,17 +32,30 @@ const ProductCard: React.FC<ProductCardProps> = ({
   const user = useStore((state) => state.user);
   const { canViewStock } = useInventoryVisibility(user?.role);
   
-  const hasDiscount = product.discount && product.discount.value > 0;
+  // Determine if user can see discounts (guests and customers only)
+  const canSeeDiscounts = !user || user.role === 'customer';
+  
+  // Determine if user can use cart (only admin and worker roles)
+  const canUseCart = user && ['admin', 'worker'].includes(user.role);
+  
+  const hasDiscount = canSeeDiscounts && product.discount && product.discount.value > 0;
   const displayPrice = hasDiscount ? product.discount.discounted_price : product.price;
   const originalPrice = hasDiscount ? product.discount.original_price : product.price;
 
-  const getStockStatus = (stock: number) => {
-    if (stock <= 0) return { text: 'Out of Stock', color: 'text-red-500', bgColor: 'bg-red-50' };
-    if (stock <= 5) return { text: 'Low Stock', color: 'text-yellow-600', bgColor: 'bg-yellow-50' };
-    return { text: 'In Stock', color: 'text-green-600', bgColor: 'bg-green-50' };
+  const getStockDisplay = (stock: number) => {
+    if (canViewStock) {
+      // Admin/Worker: Show exact stock numbers
+      if (stock <= 0) return { text: `Out of Stock (${stock})`, color: 'text-red-500', bgColor: 'bg-red-50' };
+      if (stock <= 5) return { text: `Low Stock (${stock} left)`, color: 'text-yellow-600', bgColor: 'bg-yellow-50' };
+      return { text: `In Stock (${stock} available)`, color: 'text-green-600', bgColor: 'bg-green-50' };
+    } else {
+      // Guest/Customer: Show only status
+      if (stock <= 0) return { text: 'Out of Stock', color: 'text-red-500', bgColor: 'bg-red-50' };
+      return { text: 'In Stock', color: 'text-green-600', bgColor: 'bg-green-50' };
+    }
   };
 
-  const stockStatus = getStockStatus(product.stock);
+  const stockDisplay = getStockDisplay(product.stock);
 
   return (
     <div className={`bg-white rounded-xl border border-neutral-200 overflow-hidden hover:shadow-lg transition-all group ${className}`}>
@@ -53,7 +66,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
         
-        {/* Discount Badge */}
+        {/* Discount Badge - Only for guests and customers */}
         {hasDiscount && (
           <div className="absolute top-3 left-3">
             <DiscountBadge
@@ -66,18 +79,16 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
-        {/* Stock Status - Only visible to admin/worker */}
-        {canViewStock && (
-          <div className="absolute top-3 right-3">
-            <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${stockStatus.bgColor} ${stockStatus.color}`}>
-              <div className={`w-2 h-2 rounded-full ${
-                product.stock > 5 ? 'bg-green-500' : 
-                product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'
-              }`} />
-              {stockStatus.text}
-            </div>
+        {/* Stock Status */}
+        <div className="absolute top-3 right-3">
+          <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${stockDisplay.bgColor} ${stockDisplay.color}`}>
+            <div className={`w-2 h-2 rounded-full ${
+              product.stock > 5 ? 'bg-green-500' : 
+              product.stock > 0 ? 'bg-yellow-500' : 'bg-red-500'
+            }`} />
+            {stockDisplay.text}
           </div>
-        )}
+        </div>
 
         {product.stock <= 0 && (
           <div className="absolute inset-0 bg-black/60 flex items-center justify-center">
@@ -175,8 +186,8 @@ const ProductCard: React.FC<ProductCardProps> = ({
           </div>
         )}
 
-        {/* Add to Cart Button */}
-        {showAddToCart && onAddToCart && (
+        {/* Add to Cart Button - Only for admin/worker */}
+        {canUseCart && showAddToCart && onAddToCart && (
           <button
             onClick={() => onAddToCart(product)}
             disabled={product.stock <= 0}
@@ -189,6 +200,15 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <ShoppingCart className="w-4 h-4" />
             {product.stock > 0 ? 'Add to Cart' : 'Out of Stock'}
           </button>
+        )}
+
+        {/* Message for guests and customers */}
+        {!canUseCart && (
+          <div className="text-center p-3 bg-neutral-100 rounded-lg">
+            <p className="text-sm text-neutral-600">
+              {!user ? 'Please login to purchase' : 'Contact staff to purchase'}
+            </p>
+          </div>
         )}
       </div>
     </div>

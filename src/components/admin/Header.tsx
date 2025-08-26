@@ -32,7 +32,7 @@ interface HeaderProps {
 
 interface Notification {
   id: string;
-  type: 'new_order' | 'low_stock' | 'analytics_milestone' | 'user_registration';
+  type: 'success' | 'error' | 'warning' | 'info';
   title: string;
   message: string;
   timestamp: Date;
@@ -85,7 +85,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Add notification function
+  // Enhanced notification system
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {
     const newNotification: Notification = {
       ...notification,
@@ -103,74 +103,124 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
         icon: '/favicon.ico'
       });
     }
+
+    // Show toast notification for immediate feedback
+    showToastNotification(newNotification);
   };
 
-  // Listen for POS notifications
-  useEffect(() => {
-    const handlePOSNotification = (event: any) => {
-      console.log('POS Notification received:', event.detail);
-      
-      addNotification({
-        type: event.detail.type === 'success' ? 'new_order' : 
-              event.detail.type === 'error' ? 'low_stock' :
-              event.detail.type === 'warning' ? 'low_stock' : 
-              event.detail.type === 'info' ? 'analytics_milestone' : 'new_order',
-        title: event.detail.title,
-        message: event.detail.message,
-        data: event.detail
-      });
-      
-      // Also show a toast notification for immediate feedback
-      const toast = document.createElement('div');
-      toast.className = `fixed top-20 right-4 z-50 p-4 rounded-lg shadow-lg max-w-sm transform transition-all duration-300 ${
-        event.detail.type === 'success' ? 'bg-green-500 text-white' :
-        event.detail.type === 'error' ? 'bg-red-500 text-white' :
-        event.detail.type === 'warning' ? 'bg-yellow-500 text-white' :
-        'bg-blue-500 text-white'
-      }`;
-      toast.innerHTML = `
-        <div class="flex items-center gap-2">
-          <div class="font-semibold">${event.detail.title}</div>
+  // Enhanced toast notification system
+  const showToastNotification = (notification: Notification) => {
+    const toast = document.createElement('div');
+    toast.className = `fixed top-20 right-4 z-[9999] p-4 rounded-xl shadow-2xl max-w-sm transform transition-all duration-500 border-l-4 ${
+      notification.type === 'success' ? 'bg-green-50 text-green-800 border-green-500' :
+      notification.type === 'error' ? 'bg-red-50 text-red-800 border-red-500' :
+      notification.type === 'warning' ? 'bg-yellow-50 text-yellow-800 border-yellow-500' :
+      'bg-blue-50 text-blue-800 border-blue-500'
+    }`;
+    
+    toast.innerHTML = `
+      <div class="flex items-start gap-3">
+        <div class="flex-shrink-0 mt-0.5">
+          ${notification.type === 'success' ? '<svg class="w-5 h-5 text-green-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"></path></svg>' :
+            notification.type === 'error' ? '<svg class="w-5 h-5 text-red-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clip-rule="evenodd"></path></svg>' :
+            notification.type === 'warning' ? '<svg class="w-5 h-5 text-yellow-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clip-rule="evenodd"></path></svg>' :
+            '<svg class="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"></path></svg>'
+          }
         </div>
-        <div class="text-sm mt-1">${event.detail.message}</div>
-      `;
-      
-      document.body.appendChild(toast);
-      
-      // Animate in
-      setTimeout(() => {
-        toast.style.transform = 'translateX(0)';
-        toast.style.opacity = '1';
-      }, 100);
-      
-      // Remove after 4 seconds
-      setTimeout(() => {
+        <div class="flex-1 min-w-0">
+          <div class="font-semibold text-sm mb-1">${notification.title}</div>
+          <div class="text-sm">${notification.message}</div>
+        </div>
+        <button onclick="this.parentElement.parentElement.remove()" class="flex-shrink-0 text-current opacity-70 hover:opacity-100">
+          <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd"></path></svg>
+        </button>
+      </div>
+    `;
+    
+    // Set initial position off-screen
+    toast.style.transform = 'translateX(100%)';
+    toast.style.opacity = '0';
+    
+    document.body.appendChild(toast);
+    
+    // Animate in
+    setTimeout(() => {
+      toast.style.transform = 'translateX(0)';
+      toast.style.opacity = '1';
+    }, 100);
+    
+    // Auto-remove after duration based on type
+    const duration = notification.type === 'error' ? 8000 : 
+                   notification.type === 'warning' ? 6000 : 4000;
+    
+    setTimeout(() => {
+      if (document.body.contains(toast)) {
         toast.style.transform = 'translateX(100%)';
         toast.style.opacity = '0';
         setTimeout(() => {
           if (document.body.contains(toast)) {
             document.body.removeChild(toast);
           }
-        }, 300);
-      }, 4000);
+        }, 500);
+      }
+    }, duration);
+  };
+
+  // Listen for POS notifications with enhanced handling
+  useEffect(() => {
+    const handlePOSNotification = (event: any) => {
+      console.log('POS Notification received:', event.detail);
+      
+      addNotification({
+        type: event.detail.type || 'info',
+        title: event.detail.title || 'POS Notification',
+        message: event.detail.message || 'Action completed',
+        data: event.detail
+      });
+    };
+
+    // Listen for discount notifications
+    const handleDiscountNotification = (event: any) => {
+      console.log('Discount Notification received:', event.detail);
+      
+      addNotification({
+        type: event.detail.type || 'info',
+        title: event.detail.title || 'Discount Update',
+        message: event.detail.message || 'Discount action completed',
+        data: event.detail
+      });
+    };
+
+    // Listen for shop notifications
+    const handleShopNotification = (event: any) => {
+      console.log('Shop Notification received:', event.detail);
+      
+      addNotification({
+        type: event.detail.type || 'info',
+        title: event.detail.title || 'Shop Update',
+        message: event.detail.message || 'Shop action completed',
+        data: event.detail
+      });
     };
 
     window.addEventListener('posNotification', handlePOSNotification);
-    console.log('POS notification listener added');
+    window.addEventListener('discountNotification', handleDiscountNotification);
+    window.addEventListener('shopNotification', handleShopNotification);
     
     return () => {
       window.removeEventListener('posNotification', handlePOSNotification);
-      console.log('POS notification listener removed');
+      window.removeEventListener('discountNotification', handleDiscountNotification);
+      window.removeEventListener('shopNotification', handleShopNotification);
     };
   }, []);
 
-  // Real-time notifications setup
+  // Real-time notifications setup with enhanced error handling
   useEffect(() => {
     const setupNotifications = async () => {
       try {
         console.log('Setting up real-time notifications...');
 
-        // Subscribe to new orders
+        // Subscribe to new orders with enhanced handling
         const ordersSubscription = supabase
           .channel('orders_changes')
           .on('postgres_changes',
@@ -178,9 +228,21 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             (payload) => {
               console.log('New order received:', payload);
               addNotification({
-                type: 'new_order',
+                type: 'success',
                 title: 'New Order Received',
                 message: `Order #${payload.new.id.slice(0, 8)} - KES ${payload.new.total.toLocaleString()}`,
+                data: payload.new
+              });
+            }
+          )
+          .on('postgres_changes',
+            { event: 'UPDATE', schema: 'public', table: 'orders' },
+            (payload) => {
+              console.log('Order updated:', payload);
+              addNotification({
+                type: 'info',
+                title: 'Order Status Updated',
+                message: `Order #${payload.new.id.slice(0, 8)} is now ${payload.new.status}`,
                 data: payload.new
               });
             }
@@ -190,7 +252,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             setIsConnected(status === 'SUBSCRIBED');
           });
 
-        // Subscribe to stock updates
+        // Subscribe to stock updates with enhanced alerts
         const productsSubscription = supabase
           .channel('products_changes')
           .on('postgres_changes',
@@ -198,9 +260,17 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             (payload) => {
               console.log('Product updated:', payload);
               const product = payload.new;
-              if (product.stock <= 5 && product.stock > 0) {
+              
+              if (product.stock <= 0) {
                 addNotification({
-                  type: 'low_stock',
+                  type: 'error',
+                  title: 'Out of Stock Alert',
+                  message: `${product.name} is now out of stock`,
+                  data: product
+                });
+              } else if (product.stock <= 5) {
+                addNotification({
+                  type: 'warning',
                   title: 'Low Stock Alert',
                   message: `${product.name} is running low (${product.stock} units left)`,
                   data: product
@@ -220,7 +290,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             (payload) => {
               console.log('New user registered:', payload);
               addNotification({
-                type: 'user_registration',
+                type: 'info',
                 title: 'New User Registration',
                 message: `${payload.new.email} registered as ${payload.new.role}`,
                 data: payload.new
@@ -230,8 +300,6 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
           .subscribe((status) => {
             console.log('Profiles subscription status:', status);
           });
-
-        // Real-time notifications are now active
 
         return () => {
           console.log('Cleaning up subscriptions...');
@@ -359,10 +427,9 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
 
   const getNotificationIcon = (type: Notification['type']) => {
     switch (type) {
-      case 'new_order': return <ShoppingCart className="w-4 h-4 text-green-500" />;
-      case 'low_stock': return <Package className="w-4 h-4 text-yellow-500" />;
-      case 'analytics_milestone': return <TrendingUp className="w-4 h-4 text-purple-500" />;
-      case 'user_registration': return <Users className="w-4 h-4 text-blue-500" />;
+      case 'success': return <Check className="w-4 h-4 text-green-500" />;
+      case 'error': return <AlertCircle className="w-4 h-4 text-red-500" />;
+      case 'warning': return <AlertCircle className="w-4 h-4 text-yellow-500" />;
       default: return <Info className="w-4 h-4 text-blue-500" />;
     }
   };
@@ -503,7 +570,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             )}
           </motion.button>
 
-          {/* Notifications */}
+          {/* Enhanced Notifications */}
           <div className="relative" ref={notificationRef}>
             <motion.button
               whileTap={{ scale: 0.95 }}
@@ -512,15 +579,19 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
             >
               <Bell className="w-5 h-5 text-neutral-600" />
               {unreadCount > 0 && (
-                <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-medium rounded-full flex items-center justify-center">
+                <motion.span
+                  initial={{ scale: 0 }}
+                  animate={{ scale: 1 }}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-medium rounded-full flex items-center justify-center"
+                >
                   {unreadCount > 99 ? '99+' : unreadCount}
-                </span>
+                </motion.span>
               )}
               {/* Connection Status Indicator */}
               <span className={`absolute bottom-0 right-0 w-2 h-2 rounded-full ${isConnected ? 'bg-green-400' : 'bg-gray-400'}`} />
             </motion.button>
 
-            {/* Notifications Dropdown */}
+            {/* Enhanced Notifications Dropdown */}
             <AnimatePresence>
               {showNotifications && (
                 <motion.div
