@@ -1,4 +1,5 @@
 import React from 'react';
+import { useEffect } from 'react';
 import { useStore } from '../store';
 import { useNavigate } from 'react-router-dom';
 import { ShoppingBag, Plus, Minus, Trash2, ArrowRight } from 'lucide-react';

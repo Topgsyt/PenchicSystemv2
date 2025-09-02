@@ -39,7 +39,7 @@ export default function Shop() {
     if (products.length > 0) {
       loadProductDiscounts();
     }
-  }, [products, user]);
+  }, [products]);
 
   async function fetchProducts() {
     try {
@@ -70,7 +70,7 @@ export default function Shop() {
       const productsWithDiscountInfo = await Promise.all(
         products.map(async (product) => {
           try {
-            const discountInfo = await getProductDiscount(product.id, 1, user?.id);
+            const discountInfo = await getProductDiscount(product.id, 1);
           
             if (discountInfo) {
               return {

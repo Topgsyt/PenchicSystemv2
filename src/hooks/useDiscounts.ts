@@ -27,8 +27,7 @@ export const useDiscounts = (): UseDiscountsReturn => {
 
   const getProductDiscount = async (
     productId: string, 
-    quantity: number, 
-    userId?: string
+    quantity: number
   ): Promise<DiscountInfo | null> => {
     if (!productId || quantity <= 0) {
       return null;

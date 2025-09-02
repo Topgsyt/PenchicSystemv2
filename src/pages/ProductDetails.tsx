@@ -21,8 +21,8 @@ const ProductDetails = () => {
   const { getProductDiscount } = useDiscounts();
   const { canViewStock } = useInventoryVisibility(user?.role);
 
-  // Determine if user can see discounts (guests and customers only)
-  const canSeeDiscounts = !user || user.role === 'customer';
+  // All users can see discounts (guests and all logged-in users)
+  const canSeeDiscounts = true;
   
   // Determine if user can use cart (only admin and worker roles)
   const canUseCart = user && ['admin', 'worker'].includes(user.role);
@@ -45,7 +45,7 @@ const ProductDetails = () => {
         // Load discount information if user can see discounts
         if (canSeeDiscounts && data) {
           try {
-            const discountInfo = await getProductDiscount(data.id, 1, user?.id);
+            const discountInfo = await getProductDiscount(data.id, 1);
             if (discountInfo) {
               setProductWithDiscount({
                 ...data,
