@@ -41,6 +41,7 @@ const POSInterface = () => {
   const [cashAmount, setCashAmount] = useState('');
   const [sessionId, setSessionId] = useState(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState('grid');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showReceipt, setShowReceipt] = useState(false);
@@ -121,12 +122,14 @@ const POSInterface = () => {
   };
 
   const fetchProducts = async () => {
-    try {
+        .gte('stock', 0)
+    setError(null);
       const { data, error } = await supabase.from('products').select('*').order('name');
       if (error) throw error;
       setProducts(data || []);
     } catch (error) {
       console.error('Error fetching products:', error);
+      setError('Failed to load products. Please refresh the page.');
     } finally {
       setLoading(false);
     }
