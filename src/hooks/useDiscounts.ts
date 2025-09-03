@@ -29,7 +29,7 @@ export const useDiscounts = (): UseDiscountsReturn => {
     productId: string, 
     quantity: number
   ): Promise<DiscountInfo | null> => {
-    if (!productId || quantity <= 0) {
+    if (!productId || !quantity || quantity <= 0) {
       return null;
     }
     
@@ -71,6 +71,10 @@ export const useDiscounts = (): UseDiscountsReturn => {
       }
       
       const originalPrice = productData.price;
+      if (!originalPrice || originalPrice <= 0) {
+        return null;
+      }
+      
       const discountAmount = (originalPrice * discount.percentage / 100);
       const finalPrice = originalPrice - discountAmount;
       

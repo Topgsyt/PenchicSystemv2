@@ -122,8 +122,8 @@ const POSInterface = () => {
   };
 
   const fetchProducts = async () => {
-        .gte('stock', 0)
-    setError(null);
+    try {
+      setError(null);
       const { data, error } = await supabase.from('products').select('*').order('name');
       if (error) throw error;
       setProducts(data || []);
@@ -696,8 +696,8 @@ const POSInterface = () => {
                         )}
                       </div>
                       <button
-                        disabled={item.quantity >= item.product.stock || loading}
-                        disabled={item.quantity <= 1 || loading}
+                        onClick={() => removeFromCart(item.id)}
+                        className="p-1.5 hover:bg-red-100 rounded text-red-500 transition-colors touch-target"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

@@ -40,7 +40,7 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
   }, [cartItems, userId]);
 
   const calculateDiscounts = async () => {
-    if (!cartItems.length) {
+    if (!cartItems || cartItems.length === 0) {
       setAppliedDiscounts([]);
       onDiscountApplied([]);
       return;
@@ -51,6 +51,8 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
       const discounts = [];
 
       for (const item of cartItems) {
+        if (!item.product || !item.product.id) continue;
+        
         try {
           const discountInfo = await getProductDiscount(
             item.product.id,

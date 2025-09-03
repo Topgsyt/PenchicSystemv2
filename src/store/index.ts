@@ -83,8 +83,8 @@ export const useStore = create<StoreState>()(
         set((state) => ({
           cart: state.cart.filter(
             (item) =>
-              item.product.id !== productId ||
-              (variantId && item.variant?.id !== variantId)
+              !(item.product.id === productId && 
+                (variantId ? item.variant?.id === variantId : !item.variant))
           ),
         })),
       clearCart: () => set({ cart: [] }),
