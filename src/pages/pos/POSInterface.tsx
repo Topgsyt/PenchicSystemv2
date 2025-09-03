@@ -696,8 +696,8 @@ const POSInterface = () => {
                         )}
                       </div>
                       <button
-                        onClick={() => removeFromCart(item.id)}
-                        className="p-1.5 hover:bg-red-100 rounded text-red-500 transition-colors touch-target"
+                        disabled={item.quantity >= item.product.stock || loading}
+                        disabled={item.quantity <= 1 || loading}
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

@@ -807,15 +807,23 @@ const Orders = () => {
                       <div className="space-y-4">
                         {/* Order ID and Status Row */}
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2 sm:gap-3">
-                            <h3 className="text-base sm:text-lg font-bold text-neutral-900">
+                            src={item.products?.image_url || '/placeholder-image.jpg'}
+                            alt={productNames[item.product_id] || item.products?.name || 'Product'}
                               #{order.id.slice(0, 8)}
+                            onError={(e) => {
+                              e.currentTarget.src = '/placeholder-image.jpg';
+                            }}
                             </h3>
                             <span className={`flex items-center gap-1 px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium border ${getStatusColor(order.status)}`}>
-                              {getStatusIcon(order.status)}
+                            <h4 className="font-medium text-neutral-900">
+                              {productNames[item.product_id] || item.products?.name || `Product ${item.product_id.slice(0, 8)}`}
+                            </h4>
                               <span className="hidden sm:inline">{order.status.charAt(0).toUpperCase() + order.status.slice(1)}</span>
                             </span>
                           </div>
+                            {!item.products?.name && (
+                              <p className="text-xs text-red-500">Product data unavailable</p>
+                            )}
                           
                           <div className="text-right">
                             <p className="text-xs sm:text-sm text-neutral-500">Total</p>
