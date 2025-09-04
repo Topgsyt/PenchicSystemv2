@@ -307,8 +307,7 @@ const POSInterface = () => {
       fetchProducts();
     } catch (error) {
       console.error('Error processing payment:', error);
-      setError('Error processing payment. Please try again.');
-      setTimeout(() => setError(null), 5000);
+      alert('Error processing payment. Please try again.');
     }
   };
 
