@@ -899,13 +899,18 @@ const POSInterface = () => {
                       min={calculateTotals().total.toString()}
                       step="0.01"
                     />
-                    {cashAmount && Number(cashAmount) >= calculateTotals().total && (
-                      <div className="bg-green-50 rounded-lg p-3">
-                        <p className="text-sm text-green-700">
-                          Change: KES {(Number(cashAmount) - calculateTotals().total).toLocaleString()}
+                    <>
+                      {parseFloat(cashAmount) >= calculateTotals().total && (
+                        <p className="text-green-600 font-medium">
+                          Change: KES {(parseFloat(cashAmount) - calculateTotals().total).toLocaleString()}
                         </p>
-                      </div>
-                    )}
+                      )}
+                      {parseFloat(cashAmount) < calculateTotals().total && cashAmount !== '' && (
+                        <p className="text-red-600 font-medium">
+                          Insufficient amount: Need KES {(calculateTotals().total - parseFloat(cashAmount)).toLocaleString()} more
+                        </p>
+                      )}
+                    </>
                   </motion.div>
                 )}
 

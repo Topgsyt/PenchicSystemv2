@@ -56,17 +56,10 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
         try {
           const discountInfo = await getProductDiscount(
             item.product.id,
-            item.quantity,
-            userId
+            item.quantity
           );
 
           if (discountInfo) {
-            // Validate usage limits if user is provided
-            if (userId) {
-              const isValid = await validateDiscountUsage(discountInfo.campaign_id, userId);
-              if (!isValid) continue;
-            }
-
             discounts.push({
               productId: item.product.id,
               productName: item.product.name,

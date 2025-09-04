@@ -376,19 +376,21 @@ const Orders = () => {
                         onChange={(e) => handleStatusChange(order.id, e.target.value)}
                         className="w-full lg:w-auto px-4 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
                       >
-                        <option value="pending">Pending</option>
-                        <option value="processing">Processing</option>
+                              src={item.products?.image_url || '/placeholder-image.jpg'}
+                              alt={item.products?.name || 'Product'}
                         <option value="completed">Completed</option>
                       </select>
                     </div>
-                  </div>
+                              <h4 className="font-medium text-neutral-900">
+                                {item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`}
+                              </h4>
 
-                  <div className="border-t border-neutral-200 pt-4">
+                                Quantity: {item.quantity} × KES {(item.products?.price || item.price || 0).toLocaleString()}
                     <div className="space-y-2">
                       {order.order_items.map((item: any) => (
                         <div key={item.id} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Package2 className="w-4 h-4 text-neutral-400" />
+                                KES {(item.quantity * (item.products?.price || item.price || 0)).toLocaleString()}
                             <span className="text-neutral-900">{item.products.name}</span>
                             <span className="text-neutral-500">x {item.quantity}</span>
                           </div>
