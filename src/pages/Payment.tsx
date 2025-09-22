@@ -67,6 +67,12 @@ const Payment: React.FC = () => {
         return;
       }
 
+      // Validate cart before processing
+      if (cartItems.length === 0) {
+        setError('Cart is empty. Please add items before payment.');
+        return;
+      }
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert([
@@ -108,6 +114,7 @@ const Payment: React.FC = () => {
       if (paymentError) {
         console.error('Payment record error:', paymentError);
         // Continue even if payment record fails
+        // Continue even if payment record fails
       }
 
       setReceiptItems([...cartItems]);
@@ -116,6 +123,15 @@ const Payment: React.FC = () => {
       setShowReceipt(true);
       clearCart();
 
+      // Dispatch notification
+      window.dispatchEvent(new CustomEvent('posNotification', {
+        detail: {
+          type: 'success',
+          title: 'M-Pesa Payment Initiated',
+          message: `Payment request sent for KES ${totalAmount.toLocaleString()}`,
+          timestamp: new Date()
+        }
+      }));
       // Dispatch notification
       window.dispatchEvent(new CustomEvent('posNotification', {
         detail: {
@@ -139,14 +155,30 @@ const Payment: React.FC = () => {
           timestamp: new Date()
         }
       }));
+      
+      // Dispatch error notification
+      window.dispatchEvent(new CustomEvent('posNotification', {
+        detail: {
+          type: 'error',
+          title: 'M-Pesa Payment Failed',
+          message: 'Could not initiate M-Pesa payment. Please try again.',
+          timestamp: new Date()
+        }
+      }));
     } finally {
       setLoading(false);
     }
   };
 
   const handleConfirmPayment = async () => {
-    if (typeof paymentAmount !== 'number' || paymentAmount < totalAmount) {
+    const paymentAmountNum = parseFloat(paymentAmount as string);
+    if (isNaN(paymentAmountNum) || paymentAmountNum < totalAmount) {
       alert('Please enter a valid amount that covers the total.');
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      setError('Cart is empty. Please add items before payment.');
       return;
     }
 
@@ -192,7 +224,7 @@ const Payment: React.FC = () => {
         .insert([
           {
             order_id: order.id,
-            amount: paymentAmount,
+            amount: paymentAmountNum,
             payment_method: 'cash',
             status: 'completed',
             authorized_by: user?.id
@@ -212,6 +244,15 @@ const Payment: React.FC = () => {
         detail: {
           type: 'success',
           title: 'Cash Payment Completed',
+          message: `Payment of KES ${paymentAmountNum.toLocaleString()} processed successfully`,
+          timestamp: new Date()
+        }
+      }));
+      // Dispatch success notification
+      window.dispatchEvent(new CustomEvent('posNotification', {
+        detail: {
+          type: 'success',
+          title: 'Cash Payment Completed',
           message: `Payment of KES ${paymentAmount.toLocaleString()} processed successfully`,
           timestamp: new Date()
         }
@@ -220,6 +261,16 @@ const Payment: React.FC = () => {
     } catch (error) {
       console.error('Error processing payment:', error);
       setError('Error processing payment. Please try again.');
+      
+      // Dispatch error notification
+      window.dispatchEvent(new CustomEvent('posNotification', {
+        detail: {
+          type: 'error',
+          title: 'Cash Payment Failed',
+          message: 'Could not process cash payment. Please try again.',
+          timestamp: new Date()
+        }
+      }));
       
       // Dispatch error notification
       window.dispatchEvent(new CustomEvent('posNotification', {

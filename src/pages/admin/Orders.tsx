@@ -4,16 +4,27 @@ import {
   Package2, Download, Search, Calendar, Filter, 
   ArrowUpRight, ArrowDownRight, TrendingUp, DollarSign,
   CheckCircle, Clock, AlertCircle, Truck, RefreshCcw
-} from 'lucide-react';
+  User, Eye, Trash2, Save, X, ChevronLeft, ChevronRight,
+  ShoppingCart
+import { motion, AnimatePresence } from 'framer-motion';
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [productNames, setProductNames] = useState<{ [key: string]: string }>({});
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
   const [reportPeriod, setReportPeriod] = useState<string>('daily');
   const [customStartDate, setCustomStartDate] = useState<string>('');
   const [customEndDate, setCustomEndDate] = useState<string>('');
+  const [editingStatus, setEditingStatus] = useState<string | null>(null);
+  const [newStatus, setNewStatus] = useState<string>('');
+  const [showOrderDetails, setShowOrderDetails] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState<any>(null);
+  const [statusFilter, setStatusFilter] = useState('all');
+  const [dateFilter, setDateFilter] = useState('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [ordersPerPage] = useState(10);
   const [orderStats, setOrderStats] = useState({
     total: 0,
     pending: 0,
@@ -26,8 +37,26 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchProductNames();
   }, []);
 
+  const fetchProductNames = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('id, name');
+
+      if (error) throw error;
+
+      const nameMap = {};
+      data?.forEach(product => {
+        nameMap[product.id] = product.name;
+      });
+      setProductNames(nameMap);
+    } catch (error) {
+      console.error('Error fetching product names:', error);
+    }
+  };
   const fetchOrders = async () => {
     setLoading(true);
     try {
@@ -54,7 +83,7 @@ const Orders = () => {
 
         // Calculate revenue
         const orderTotal = order.order_items.reduce((sum, item) => 
-          sum + (item.quantity * item.products.price), 0);
+          sum + (item.quantity * (item.products?.price || item.price || 0)), 0);
         acc.totalRevenue += orderTotal;
 
         return acc;
@@ -74,6 +103,37 @@ const Orders = () => {
     }
   };
 
+  const handleStatusUpdate = async (orderId: string, newStatus: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: newStatus })
+        .eq('id', orderId);
+
+      if (error) throw error;
+      
+      setEditingStatus(null);
+      fetchOrders();
+    } catch (error) {
+      console.error('Error updating order status:', error);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm('Are you sure you want to delete this order?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .delete()
+        .eq('id', orderId);
+
+      if (error) throw error;
+      fetchOrders();
+    } catch (error) {
+      console.error('Error deleting order:', error);
+    }
+  };
   const handleStatusChange = async (orderId: string, newStatus: string) => {
     setLoading(true);
     try {
@@ -107,6 +167,8 @@ const Orders = () => {
         return 'bg-blue-500/20 text-blue-500';
       case 'completed':
         return 'bg-green-500/20 text-green-500';
+      case 'cancelled':
+        return 'bg-red-500/20 text-red-500';
       default:
         return 'bg-gray-500/20 text-gray-500';
     }
@@ -120,6 +182,8 @@ const Orders = () => {
         return <RefreshCcw className="w-4 h-4" />;
       case 'completed':
         return <CheckCircle className="w-4 h-4" />;
+      case 'cancelled':
+        return <X className="w-4 h-4" />;
       default:
         return <AlertCircle className="w-4 h-4" />;
     }
@@ -164,11 +228,15 @@ const Orders = () => {
       'PENCHIC FARM - ORDER REPORT',
       `Period: ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`,
       '',
-      ['Order ID', 'Customer Email', 'Items', 'Total Amount', 'Payment Method', 'Status', 'Date'].join(','),
+      ['Order ID', 'Customer Email', 'Product Names', 'Quantities', 'Total Amount', 'Payment Method', 'Status', 'Date'].join(','),
       ...filteredOrders.map(order => [
         order.id,
         order.profiles?.email || 'N/A',
-        order.order_items.map(item => `${item.products.name} (${item.quantity})`).join('; '),
+        order.order_items.map(item => {
+          const productName = item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`;
+          return productName;
+        }).join('; '),
+        order.order_items.map(item => item.quantity).join('; '),
         `KES ${order.total.toLocaleString('en-KE')}`,
         order.payments?.[0]?.payment_method.toUpperCase() || 'N/A',
         order.status,
@@ -192,17 +260,44 @@ const Orders = () => {
   };
 
   const filteredOrders = orders
-    .filter(order => filter === 'all' || order.status === filter)
-    .filter(order => 
-      searchTerm === '' || 
-      order.profiles.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.id.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    .filter(order => {
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
+      const matchesSearch = searchTerm === '' || 
+        order.profiles?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.id.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      let matchesDate = true;
+      if (dateFilter !== 'all') {
+        const orderDate = new Date(order.created_at);
+        const now = new Date();
+        
+        switch (dateFilter) {
+          case 'today':
+            matchesDate = orderDate.toDateString() === now.toDateString();
+            break;
+          case 'week':
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            matchesDate = orderDate >= weekAgo;
+            break;
+          case 'month':
+            matchesDate = orderDate.getMonth() === now.getMonth() && orderDate.getFullYear() === now.getFullYear();
+            break;
+        }
+      }
+      
+      return matchesStatus && matchesSearch && matchesDate;
+    });
+
+  // Pagination
+  const indexOfLastOrder = currentPage * ordersPerPage;
+  const indexOfFirstOrder = indexOfLastOrder - ordersPerPage;
+  const currentOrders = filteredOrders.slice(indexOfFirstOrder, indexOfLastOrder);
+  const totalPages = Math.ceil(filteredOrders.length / ordersPerPage);
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-white"></div>
+      <div className="min-h-screen bg-neutral-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
   }
@@ -296,7 +391,7 @@ const Orders = () => {
             </div>
 
             {/* Filters */}
-            <div className="flex flex-col lg:flex-row gap-4 mb-6 md:mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 md:mb-8">
               <div className="relative flex-grow">
                 <Search className="absolute left-3 top-3 w-5 h-5 text-neutral-400" />
                 <input
@@ -308,18 +403,28 @@ const Orders = () => {
                 />
               </div>
 
-              <div className="flex flex-col sm:flex-row gap-3">
-                <select
-                  value={filter}
-                  onChange={(e) => setFilter(e.target.value)}
-                  className="px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
-                >
-                  <option value="all">All Orders</option>
-                  <option value="pending">Pending</option>
-                  <option value="processing">Processing</option>
-                  <option value="completed">Completed</option>
-                </select>
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="all">All Status</option>
+                <option value="pending">Pending</option>
+                <option value="processing">Processing</option>
+                <option value="completed">Completed</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
 
+              <select
+                value={dateFilter}
+                onChange={(e) => setDateFilter(e.target.value)}
+                className="px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+              </select>
                 <select
                   value={reportPeriod}
                   onChange={(e) => setReportPeriod(e.target.value)}
@@ -342,85 +447,310 @@ const Orders = () => {
                     />
                     <input
                       type="date"
-                      value={customEndDate}
                       onChange={(e) => setCustomEndDate(e.target.value)}
                       className="px-4 py-3 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
-                    />
-                  </div>
-                )}
+            {/* Orders Table */}
+            <div className="bg-white rounded-xl border border-neutral-200 overflow-hidden">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead className="bg-neutral-50 border-b border-neutral-200">
+                    <tr>
+                      <th className="text-left p-4 font-medium text-neutral-900">Order</th>
+                      <th className="text-left p-4 font-medium text-neutral-900">Customer</th>
+                      <th className="text-left p-4 font-medium text-neutral-900">Status</th>
+                      <th className="text-left p-4 font-medium text-neutral-900">Total</th>
+                      <th className="text-left p-4 font-medium text-neutral-900">Date</th>
+                      <th className="text-right p-4 font-medium text-neutral-900">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-neutral-200">
+                    {currentOrders.map((order, index) => (
+                      <motion.tr
+                        key={order.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: index * 0.05 }}
+                        className="hover:bg-neutral-50 transition-colors"
+                        data-order-id={order.id}
+                      >
+                        <td className="p-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
+                              <ShoppingCart className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="font-medium text-neutral-900">#{order.id.slice(0, 8)}</p>
+                              <p className="text-xs text-neutral-500">{order.order_items?.length || 0} items</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <User className="w-4 h-4 text-neutral-500" />
+                            <span className="text-sm text-neutral-900">
+                              {order.profiles?.email || 'Guest'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          {editingStatus === order.id ? (
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={newStatus}
+                                onChange={(e) => setNewStatus(e.target.value)}
+                                className="px-3 py-1 border border-neutral-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20"
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="processing">Processing</option>
+                                <option value="completed">Completed</option>
+                                <option value="cancelled">Cancelled</option>
+                              </select>
+                              <button
+                                onClick={() => handleStatusUpdate(order.id, newStatus)}
+                                className="p-1 text-green-600 hover:bg-green-50 rounded"
+                              >
+                                <Save className="w-4 h-4" />
+                              </button>
+                              <button
+                                onClick={() => setEditingStatus(null)}
+                                className="p-1 text-red-600 hover:bg-red-50 rounded"
+                              >
+                                <X className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => {
+                                setEditingStatus(order.id);
+                                setNewStatus(order.status);
+                              }}
+                              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-sm font-medium transition-colors hover:bg-opacity-80 ${getStatusColor(order.status)}`}
+                            >
+                              {getStatusIcon(order.status)}
+                              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+                            </button>
+                          )}
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <DollarSign className="w-4 h-4 text-neutral-500" />
+                            <span className="font-medium text-neutral-900">
+                              KES {order.total.toLocaleString()}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center gap-2">
+                            <Calendar className="w-4 h-4 text-neutral-500" />
+                            <div>
+                              <p className="text-sm text-neutral-900">
+                                {new Date(order.created_at).toLocaleDateString()}
+                              </p>
+                              <p className="text-xs text-neutral-500">
+                                {new Date(order.created_at).toLocaleTimeString()}
+                              </p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => {
+                                setSelectedOrder(order);
+                                setShowOrderDetails(true);
+                              }}
+                              className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                              title="View details"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteOrder(order.id)}
+                              className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                              title="Delete order"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </td>
+                      </motion.tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-            </div>
 
-            {/* Orders List */}
-            <div className="space-y-4 md:space-y-6">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="bg-neutral-50 rounded-lg p-4 md:p-6 border border-neutral-200">
-                  <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-4">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold text-neutral-900">Order #{order.id.slice(0, 8)}</h3>
-                        <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm ${getStatusColor(order.status)}`}>
-                          {getStatusIcon(order.status)}
-                          {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
-                        </span>
-                      </div>
-                      <p className="text-neutral-600">{order.profiles?.email || 'N/A'}</p>
-                      <p className="text-neutral-500 text-sm">
-                        {new Date(order.created_at).toLocaleString()}
-                      </p>
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between p-6 border-t border-neutral-200">
+                  <div className="text-sm text-neutral-600">
+                    Showing {indexOfFirstOrder + 1} to {Math.min(indexOfLastOrder, filteredOrders.length)} of {filteredOrders.length} orders
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                      disabled={currentPage === 1}
+                      className="flex items-center gap-1 px-3 py-2 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                    >
+                      <ChevronLeft className="w-4 h-4" />
+                      Previous
+                    </button>
+                    
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        const pageNum = i + 1;
+                        return (
+                          <button
+                            key={pageNum}
+                            onClick={() => setCurrentPage(pageNum)}
+                            className={`px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                              currentPage === pageNum
+                                ? 'bg-primary text-white'
+                                : 'bg-white border border-neutral-200 text-neutral-700 hover:bg-neutral-50'
+                            }`}
+                          >
+                            {pageNum}
+                          </button>
+                        );
+                      })}
                     </div>
                     
-                    <div className="w-full lg:w-auto">
-                      <select
-                        value={order.status}
-                        onChange={(e) => handleStatusChange(order.id, e.target.value)}
-                        className="w-full lg:w-auto px-4 py-2 bg-white border border-neutral-300 rounded-lg text-neutral-900 focus:ring-2 focus:ring-primary focus:border-transparent"
-                      >
-                              src={item.products?.image_url || '/placeholder-image.jpg'}
-                              alt={item.products?.name || 'Product'}
-                        <option value="completed">Completed</option>
-                      </select>
-                    </div>
-                              <h4 className="font-medium text-neutral-900">
-                                {item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`}
-                              </h4>
-
-                                Quantity: {item.quantity} × KES {(item.products?.price || item.price || 0).toLocaleString()}
-                    <div className="space-y-2">
-                      {order.order_items.map((item: any) => (
-                        <div key={item.id} className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                                KES {(item.quantity * (item.products?.price || item.price || 0)).toLocaleString()}
-                            <span className="text-neutral-900">{item.products.name}</span>
-                            <span className="text-neutral-500">x {item.quantity}</span>
-                          </div>
-                          <span className="font-medium text-neutral-900">
-                            KES {(item.products.price * item.quantity).toLocaleString('en-KE')}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mt-4 pt-4 border-t border-neutral-200 gap-2">
-                      <div className="text-sm text-neutral-500">
-                        Payment via {order.payments?.[0]?.payment_method.toUpperCase() || 'N/A'}
-                      </div>
-                      <div className="text-lg md:text-xl font-bold text-neutral-900">
-                        Total: KES {order.total.toLocaleString('en-KE')}
-                      </div>
-                    </div>
+                    <button
+                      onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                      disabled={currentPage === totalPages}
+                      className="flex items-center gap-1 px-3 py-2 bg-white border border-neutral-200 rounded-lg hover:bg-neutral-50 transition-colors disabled:opacity-50"
+                    >
+                      Next
+                      <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
-                </div>
-              ))}
-
-              {filteredOrders.length === 0 && (
-                <div className="text-center py-12 bg-white rounded-lg border border-neutral-200">
-                  <Package2 className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
-                  <h3 className="text-lg font-semibold mb-2 text-neutral-900">No Orders Found</h3>
-                  <p className="text-neutral-600">No orders match your current filters</p>
                 </div>
               )}
             </div>
+
+              {filteredOrders.length === 0 && (
+            {/* Empty State */}
+            {currentOrders.length === 0 && (
+                  <Package2 className="w-12 h-12 mx-auto mb-4 text-neutral-400" />
+                <ShoppingCart className="w-16 h-16 mx-auto mb-4 text-neutral-300" />
+                  <p className="text-neutral-600">No orders match your current filters</p>
+                <p className="text-neutral-600">
+                  {searchTerm || statusFilter !== 'all' || dateFilter !== 'all'
+                    ? 'Try adjusting your search or filter criteria'
+                    : 'No orders have been placed yet'
+                  }
+                </p>
+              )}
+            </div>
+
+            {/* Order Details Modal */}
+            <AnimatePresence>
+              {showOrderDetails && selectedOrder && (
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+                >
+                  <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    exit={{ scale: 0.9, opacity: 0 }}
+                    className="bg-white rounded-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto shadow-2xl"
+                  >
+                    <div className="p-6 border-b border-neutral-200">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-xl font-bold text-neutral-900">
+                            Order Details #{selectedOrder.id.slice(0, 8)}
+                          </h2>
+                          <p className="text-sm text-neutral-600">
+                            Placed on {new Date(selectedOrder.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => setShowOrderDetails(false)}
+                          className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                        >
+                          <X className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                      {/* Order Info */}
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-neutral-900">Customer Information</h3>
+                          <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                              <User className="w-4 h-4 text-neutral-500" />
+                              <span className="text-sm">{selectedOrder.profiles?.email || 'Guest'}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-neutral-900">Order Status</h3>
+                          <div className={`flex items-center gap-2 px-3 py-2 rounded-lg border w-fit ${getStatusColor(selectedOrder.status)}`}>
+                            {getStatusIcon(selectedOrder.status)}
+                            <span className="font-medium">
+                              {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h3 className="font-semibold text-neutral-900">Payment Information</h3>
+                          <div className="space-y-2">
+                            <div className="flex justify-between">
+                              <span className="text-sm text-neutral-600">Total:</span>
+                              <span className="font-medium">KES {selectedOrder.total.toLocaleString()}</span>
+                            </div>
+                            {selectedOrder.payments && selectedOrder.payments.length > 0 && (
+                              <div className="flex justify-between">
+                                <span className="text-sm text-neutral-600">Method:</span>
+                                <span className="font-medium capitalize">
+                                  {selectedOrder.payments[0].payment_method}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Order Items */}
+                      <div>
+                        <h3 className="font-semibold text-neutral-900 mb-4">Order Items</h3>
+                        <div className="space-y-3">
+                          {selectedOrder.order_items?.map((item, index) => (
+                            <div key={item.id} className="flex items-center gap-4 p-4 bg-neutral-50 rounded-lg border border-neutral-200">
+                              <img
+                                src={item.products?.image_url || '/placeholder-image.jpg'}
+                                alt={item.products?.name || 'Product'}
+                                className="w-16 h-16 object-cover rounded-lg"
+                              />
+                              <div className="flex-1">
+                                <h4 className="font-medium text-neutral-900">
+                                  {item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`}
+                                </h4>
+                                <p className="text-sm text-neutral-600">
+                                  Quantity: {item.quantity} × KES {(item.products?.price || item.price || 0).toLocaleString()}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-medium text-neutral-900">
+                                  KES {(item.quantity * (item.products?.price || item.price || 0)).toLocaleString()}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              )}
+            </AnimatePresence>
           </div>
         </div>
       </div>

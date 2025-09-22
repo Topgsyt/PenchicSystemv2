@@ -46,11 +46,19 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
       return;
     }
 
+    if (!cartItems || cartItems.length === 0) {
+      setAppliedDiscounts([]);
+      onDiscountApplied([]);
+      return;
+    }
+
     setLoading(true);
     try {
       const discounts = [];
 
       for (const item of cartItems) {
+        if (!item.product || !item.product.id) continue;
+        
         if (!item.product || !item.product.id) continue;
         
         try {
@@ -63,12 +71,14 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
             discounts.push({
               productId: item.product.id,
               productName: item.product.name,
+              productName: item.product.name,
               campaignId: discountInfo.campaign_id,
               discountType: discountInfo.discount_type,
               originalPrice: discountInfo.original_price,
               discountAmount: discountInfo.discount_amount * item.quantity,
               finalPrice: discountInfo.final_price,
               description: discountInfo.offer_description,
+              quantity: item.quantity,
               quantity: item.quantity,
               savings: discountInfo.discount_amount * item.quantity,
               type: discountInfo.discount_type,
@@ -79,6 +89,7 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
         } catch (error) {
           console.error(`Error calculating discount for ${item.product.name}:`, error);
           // Continue with other items even if one fails
+          // Continue with other items even if one fails
         }
       }
 
@@ -86,6 +97,9 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
       onDiscountApplied(discounts);
     } catch (error) {
       console.error('Error calculating discounts:', error);
+      // Don't break the UI, just log the error
+      setAppliedDiscounts([]);
+      onDiscountApplied([]);
       // Don't break the UI, just log the error
       setAppliedDiscounts([]);
       onDiscountApplied([]);

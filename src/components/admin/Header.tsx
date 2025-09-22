@@ -653,9 +653,9 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
                                 {notification.message}
                               </p>
                               <p className="text-xs text-neutral-400 mt-2 flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
+                          {(order.order_items || []).map((item, index) => (
                                 {formatTimeAgo(notification.timestamp)}
-                              </p>
+                              {item.products?.name || 'Unknown Product'} x {item.quantity}
                             </div>
                           </div>
                         </div>
@@ -670,8 +670,8 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
                       </div>
                     )}
                   </div>
-                </motion.div>
-              )}
+                          KES {(order.order_items || []).reduce((acc, item) => 
+                            acc + (item.quantity * (item.products?.price || item.price || 0)), 0
             </AnimatePresence>
           </div>
 

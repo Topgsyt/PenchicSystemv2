@@ -34,6 +34,10 @@ export const useDiscounts = (): UseDiscountsReturn => {
       return null;
     }
     
+    if (!productId || !quantity || quantity <= 0) {
+      return null;
+    }
+    
     setLoading(true);
     setError(null);
 
@@ -72,6 +76,10 @@ export const useDiscounts = (): UseDiscountsReturn => {
       }
       
       const originalPrice = productData.price;
+      if (!originalPrice || originalPrice <= 0) {
+        return null;
+      }
+      
       if (!originalPrice || originalPrice <= 0) {
         return null;
       }

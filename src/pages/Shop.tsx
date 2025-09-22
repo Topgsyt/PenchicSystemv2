@@ -30,6 +30,12 @@ export default function Shop() {
   const user = useStore((state) => state.user);
   const navigate = useNavigate();
   const { getProductDiscount } = useDiscounts();
+  
+  // All users can see discounts (guests and all logged-in users)
+  const canSeeDiscounts = true;
+  
+  // Determine if user can use cart (only admin and worker roles)
+  const canUseCart = user && ['admin', 'worker'].includes(user.role);
 
   useEffect(() => {
     fetchProducts();
@@ -66,6 +72,11 @@ export default function Shop() {
   }
 
   const loadProductDiscounts = async () => {
+    if (!canSeeDiscounts) {
+      setProductsWithDiscounts([...products]);
+      return;
+    }
+    
     try {
       const productsWithDiscountInfo = await Promise.all(
         products.map(async (product) => {
@@ -125,6 +136,12 @@ export default function Shop() {
   const handleAddToCart = (product: Product) => {
     if (!user) {
       navigate('/login');
+      return;
+    }
+    
+    if (!canUseCart) {
+      // Show message for customers/guests
+      alert('Cart functionality is only available to staff members. Please contact our staff to make a purchase.');
       return;
     }
 
@@ -240,7 +257,7 @@ export default function Shop() {
               key={product.id}
               product={product}
               onAddToCart={handleAddToCart}
-              showAddToCart={user !== null}
+              showAddToCart={canUseCart}
             />
           ))}
         </div>

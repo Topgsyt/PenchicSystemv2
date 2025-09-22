@@ -42,6 +42,7 @@ export const useStore = create<StoreState>()(
             }
 
             return {
+              ...state,
               cart: state.cart.map((cartItem) =>
                 cartItem === existingItem
                   ? { ...cartItem, quantity: newQuantity }
@@ -50,15 +51,16 @@ export const useStore = create<StoreState>()(
             };
           }
 
-          return { cart: [...state.cart, item] };
+          return { ...state, cart: [...state.cart, item] };
         }),
       updateCartQuantity: (productId, variantId, change) =>
         set((state) => {
           return {
+            ...state,
             cart: state.cart.map((item) => {
               if (
                 item.product.id === productId &&
-                (variantId ? item.variant?.id === variantId : true)
+                (variantId ? item.variant?.id === variantId : !item.variant)
               ) {
                 const newQuantity = item.quantity + change;
                 
@@ -81,13 +83,14 @@ export const useStore = create<StoreState>()(
         }),
       removeFromCart: (productId, variantId) =>
         set((state) => ({
+          ...state,
           cart: state.cart.filter(
             (item) =>
               !(item.product.id === productId &&
-                (variantId ? item.variant?.id === variantId : !item.variant))
+                (variantId ? item.variant?.id === variantId : !item.variant?.id))
           ),
         })),
-      clearCart: () => set({ cart: [] }),
+      clearCart: () => set((state) => ({ ...state, cart: [] })),
     }),
     {
       name: 'penchic-farm-storage',

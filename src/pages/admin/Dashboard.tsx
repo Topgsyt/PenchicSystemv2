@@ -349,8 +349,8 @@ const Dashboard = () => {
                   </div>
                   <div className="text-left sm:text-right w-full sm:w-auto">
                     <p className="text-sm sm:text-base font-medium text-neutral-900">
-                      KES {order.order_items.reduce((acc, item) => 
-                        acc + (item.quantity * item.products.price), 0
+                      KES {(order.order_items || []).reduce((acc, item) => 
+                        acc + (item.quantity * (item.products?.price || item.price || 0)), 0
                       ).toLocaleString('en-KE')}
                     </p>
                     <span className={`inline-flex px-2 py-1 rounded-full text-xs font-medium ${

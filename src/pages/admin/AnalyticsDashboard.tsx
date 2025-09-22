@@ -141,14 +141,14 @@ const AnalyticsDashboard: React.FC = () => {
         const productSales = {};
         (currentMonthOrders || []).forEach(order => {
           (order.order_items || []).forEach(item => {
-            if (!item?.products?.name) return;
-            const productId = item.products.name;
-            productSales[productId] = (productSales[productId] || 0) + (item.quantity || 0);
+            const productName = item?.products?.name;
+            if (!productName) return;
+            productSales[productName] = (productSales[productName] || 0) + (item.quantity || 0);
           });
         });
 
         const topProducts = Object.entries(productSales)
-          .sort(([, a], [, b]) => b - a)
+          .sort(([, a], [, b]) => (b as number) - (a as number))
           .slice(0, 5)
           .map(([name, quantity]) => ({ name, quantity }));
 
