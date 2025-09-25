@@ -76,6 +76,12 @@ const UserManagement = () => {
         throw new Error('Email and password are required');
       }
       
+      // Validate email format
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(newUser.email)) {
+        throw new Error('Please enter a valid email address');
+      }
+      
       if (newUser.password.length < 6) {
         throw new Error('Password must be at least 6 characters long');
       }
@@ -97,7 +103,6 @@ const UserManagement = () => {
               id: authData.user.id,
               email: newUser.email,
               role: newUser.role,
-              status: newUser.status,
             },
           ]);
 
@@ -111,7 +116,7 @@ const UserManagement = () => {
       alert('User created successfully!');
     } catch (error) {
       console.error('Error adding user:', error);
-      alert(`Error adding user: ${error.message}`);
+      alert(`Error adding user: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setLoading(false);
     }

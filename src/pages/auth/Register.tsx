@@ -41,7 +41,10 @@ export default function Register() {
             },
           ]);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // Continue even if profile creation fails - user can still login
+        }
 
         navigate('/');
       }

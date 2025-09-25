@@ -115,13 +115,24 @@ const DiscountsOffers = () => {
       if (!formData.product_id || !formData.start_date || !formData.end_date || formData.percentage <= 0) {
         throw new Error('Please fill in all required fields');
       }
+      
+      if (formData.percentage > 100) {
+        throw new Error('Percentage discount cannot exceed 100%');
+      }
 
       if (new Date(formData.end_date) <= new Date(formData.start_date)) {
         throw new Error('End date must be after start date');
       }
-
-      if (formData.percentage > 100) {
-        throw new Error('Percentage discount cannot exceed 100%');
+      
+      // Check if product exists
+      const { data: productExists, error: productError } = await supabase
+        .from('products')
+        .select('id')
+        .eq('id', formData.product_id)
+        .single();
+      
+      if (productError || !productExists) {
+        throw new Error('Selected product does not exist');
       }
 
       const discountData = {

@@ -70,6 +70,8 @@ export default function Login() {
         // Redirect admin users to the admin dashboard
         if (profile?.role === 'admin') {
           navigate('/admin');
+        } else if (profile?.role === 'worker') {
+          navigate('/pos');
         } else {
           navigate('/');
         }

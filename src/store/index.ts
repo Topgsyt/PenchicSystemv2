@@ -60,7 +60,7 @@ export const useStore = create<StoreState>()(
             cart: state.cart.map((item) => {
               if (
                 item.product.id === productId &&
-                (variantId ? item.variant?.id === variantId : !item.variant)
+                (variantId ? item.variant?.id === variantId : !item.variant?.id)
               ) {
                 const newQuantity = item.quantity + change;
                 
@@ -86,8 +86,10 @@ export const useStore = create<StoreState>()(
           ...state,
           cart: state.cart.filter(
             (item) =>
-              !(item.product.id === productId &&
-                (variantId ? item.variant?.id === variantId : !item.variant?.id))
+              !(
+                item.product.id === productId &&
+                (variantId ? item.variant?.id === variantId : !item.variant?.id)
+              )
           ),
         })),
       clearCart: () => set((state) => ({ ...state, cart: [] })),

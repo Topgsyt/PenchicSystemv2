@@ -43,10 +43,17 @@ const Checkout = () => {
   );
 
   const handlePayment = (method: string) => {
+    if (cartItems.length === 0) {
+      alert('Your cart is empty. Please add items before payment.');
+      return;
+    }
+    
     if (method === 'mpesa') {
       navigate('/payment/mpesa');
     } else if (method === 'cash') {
       navigate('/payment/cash');
+    } else {
+      alert('Please select a valid payment method.');
     }
   };
 

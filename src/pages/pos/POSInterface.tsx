@@ -58,6 +58,7 @@ const POSInterface: React.FC = () => {
   const [processingPayment, setProcessingPayment] = useState(false);
   const [showReceipt, setShowReceipt] = useState(false);
   const [receiptData, setReceiptData] = useState<any>(null);
+  const [notifications, setNotifications] = useState<any[]>([]);
   
   // Discount state
   const [appliedDiscounts, setAppliedDiscounts] = useState<any[]>([]);
@@ -73,6 +74,23 @@ const POSInterface: React.FC = () => {
       return;
     }
     fetchProducts();
+    
+    // Listen for POS notifications
+    const handlePOSNotification = (event: CustomEvent) => {
+      const notification = event.detail;
+      setNotifications(prev => [notification, ...prev.slice(0, 4)]); // Keep last 5
+      
+      // Auto-remove after 5 seconds
+      setTimeout(() => {
+        setNotifications(prev => prev.filter(n => n.timestamp !== notification.timestamp));
+      }, 5000);
+    };
+    
+    window.addEventListener('posNotification', handlePOSNotification as EventListener);
+    
+    return () => {
+      window.removeEventListener('posNotification', handlePOSNotification as EventListener);
+    };
   }, [user, navigate]);
 
   // Auto-clear errors
@@ -154,7 +172,7 @@ const POSInterface: React.FC = () => {
     try {
       const item = cart.find(cartItem => 
         cartItem.product.id === productId && 
-        cartItem.variant?.id === variantId
+        (variantId ? cartItem.variant?.id === variantId : !cartItem.variant)
       );
       
       if (!item) return;
@@ -186,7 +204,7 @@ const POSInterface: React.FC = () => {
     try {
       const item = cart.find(cartItem => 
         cartItem.product.id === productId && 
-        cartItem.variant?.id === variantId
+        (variantId ? cartItem.variant?.id === variantId : !cartItem.variant)
       );
       
       if (item) {
@@ -326,6 +344,16 @@ const POSInterface: React.FC = () => {
       setPaymentMethod(null);
       setAppliedDiscounts([]);
       setDiscountTotal(0);
+      
+      // Dispatch success notification
+      window.dispatchEvent(new CustomEvent('posNotification', {
+        detail: {
+          type: 'success',
+          title: 'Payment Completed',
+          message: `${paymentMethod === 'cash' ? 'Cash' : 'M-Pesa'} payment processed successfully`,
+          timestamp: new Date()
+        }
+      }));
 
       // Refresh products to get updated stock
       fetchProducts();
@@ -333,6 +361,16 @@ const POSInterface: React.FC = () => {
     } catch (err: any) {
       console.error('Error processing payment:', err);
       setError('Payment processing failed. Please try again.');
+      
+      // Dispatch error notification
+      window.dispatchEvent(new CustomEvent('posNotification', {
+        detail: {
+          type: 'error',
+          title: 'Payment Failed',
+          message: 'Could not process payment. Please try again.',
+          timestamp: new Date()
+        }
+      }));
     } finally {
       setProcessingPayment(false);
     }
@@ -651,6 +689,38 @@ const POSInterface: React.FC = () => {
 
   return (
     <div className={`min-h-screen bg-neutral-100 ${isFullscreen ? 'fixed inset-0 z-50' : ''}`}>
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notifications.map((notification, index) => (
+          <motion.div
+            key={notification.timestamp.getTime()}
+            initial={{ opacity: 0, x: 300 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 300 }}
+            className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border max-w-sm ${
+              notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' :
+              notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
+              'bg-blue-50 border-blue-200 text-blue-800'
+            }`}
+            style={{ top: `${1 + index * 5}rem` }}
+          >
+            <div className="flex items-start gap-3">
+              {notification.type === 'success' ? (
+                <CheckCircle className="w-5 h-5 text-green-600 mt-0.5" />
+              ) : notification.type === 'error' ? (
+                <AlertCircle className="w-5 h-5 text-red-600 mt-0.5" />
+              ) : (
+                <AlertCircle className="w-5 h-5 text-blue-600 mt-0.5" />
+              )}
+              <div className="flex-1">
+                <h4 className="font-medium text-sm">{notification.title}</h4>
+                <p className="text-sm opacity-90">{notification.message}</p>
+              </div>
+            </div>
+          </motion.div>
+        ))}
+      </AnimatePresence>
+
       {/* Header */}
       <div className="bg-white border-b border-neutral-200 p-4">
         <div className="flex items-center justify-between">
@@ -854,7 +924,7 @@ const POSInterface: React.FC = () => {
                 ) : (
                   <div className="space-y-3">
                     {cart.map(item => (
-                      <div key={`${item.product.id}-${item.variant?.id || 'default'}`} className="bg-neutral-50 rounded-lg p-3">
+                      <div key={`${item.product.id}-${item.variant?.id || 'no-variant'}`} className="bg-neutral-50 rounded-lg p-3">
                         <div className="flex items-start gap-3">
                           <img
                             src={item.product.image_url}
@@ -873,7 +943,7 @@ const POSInterface: React.FC = () => {
                               <div className="flex items-center gap-1">
                                 <button
                                   onClick={() => handleQuantityChange(item.product.id, item.variant?.id, -1)}
-                                  className="p-1 hover:bg-neutral-200 rounded transition-colors"
+                                  className="p-1 hover:bg-neutral-200 rounded transition-colors disabled:opacity-50"
                                   disabled={item.quantity <= 1}
                                 >
                                   <Minus className="w-3 h-3" />
@@ -883,7 +953,8 @@ const POSInterface: React.FC = () => {
                                 </span>
                                 <button
                                   onClick={() => handleQuantityChange(item.product.id, item.variant?.id, 1)}
-                                  className="p-1 hover:bg-neutral-200 rounded transition-colors"
+                                  className="p-1 hover:bg-neutral-200 rounded transition-colors disabled:opacity-50"
+                                  disabled={item.quantity >= item.product.stock}
                                 >
                                   <Plus className="w-3 h-3" />
                                 </button>

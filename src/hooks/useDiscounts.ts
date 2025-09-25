@@ -30,7 +30,7 @@ export const useDiscounts = (): UseDiscountsReturn => {
     quantity: number,
     userId?: string
   ): Promise<DiscountInfo | null> => {
-    if (!productId || !quantity || quantity <= 0) {
+    if (!productId || quantity <= 0) {
       return null;
     }
     
@@ -76,7 +76,7 @@ export const useDiscounts = (): UseDiscountsReturn => {
       }
       
       const originalPrice = productData.price;
-      if (!originalPrice || originalPrice <= 0) {
+      if (originalPrice <= 0) {
         return null;
       }
       

@@ -12,7 +12,12 @@ const Navbar = () => {
   const cart = useStore((state) => state.cart);
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (error) {
+      console.error('Logout error:', error);
+      // Force logout even if there's an error
+    }
   };
 
   const totalCartQuantity = cart.reduce((acc, item) => acc + item.quantity, 0);

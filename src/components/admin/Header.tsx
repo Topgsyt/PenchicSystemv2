@@ -80,7 +80,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
       // Search orders
       const { data: orders } = await supabase
         .from('orders')
-        .select('id, total, profiles(email)')
+        .select('id, total, profiles!inner(email)')
         .ilike('id', `%${query}%`)
         .limit(3);
 
@@ -106,7 +106,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
           id: order.id,
           type: 'order',
           title: `Order #${order.id.slice(0, 8)}`,
-          subtitle: `KES ${order.total.toLocaleString()} - ${order.profiles?.email}`,
+          subtitle: `KES ${order.total.toLocaleString()} - ${order.profiles?.email || 'Unknown'}`,
           url: `/admin/orders`
         });
       });
@@ -136,6 +136,7 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
       setSearchResults(results);
     } catch (error) {
       console.error('Search error:', error);
+      setSearchResults([]);
     } finally {
       setIsSearching(false);
     }
@@ -148,6 +149,9 @@ const Header: React.FC<HeaderProps> = ({ onMobileMenuToggle, title, subtitle }) 
       navigate('/login');
     } catch (error) {
       console.error('Logout error:', error);
+      // Force logout even if there's an error
+      setUser(null);
+      navigate('/login');
     }
   };
 

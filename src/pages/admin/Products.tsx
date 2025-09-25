@@ -58,6 +58,25 @@ const Products = () => {
     e.preventDefault();
     setLoading(true);
     setSubmitStatus(null);
+    
+    // Validate form data
+    if (!formData.name || !formData.price || !formData.category || !formData.stock) {
+      setSubmitStatus('error');
+      setLoading(false);
+      return;
+    }
+    
+    if (parseFloat(formData.price) <= 0) {
+      setSubmitStatus('error');
+      setLoading(false);
+      return;
+    }
+    
+    if (parseInt(formData.stock) < 0) {
+      setSubmitStatus('error');
+      setLoading(false);
+      return;
+    }
 
     try {
       let imageUrl = editingProduct?.image_url || '';
@@ -72,7 +91,11 @@ const Products = () => {
 
         if (imageError) throw imageError;
 
-        imageUrl = `${supabase.supabaseUrl}/storage/v1/object/public/products/${imageData.path}`;
+        const { data: { publicUrl } } = supabase.storage
+          .from('products')
+          .getPublicUrl(imageData.path);
+        
+        imageUrl = publicUrl;
       }
 
       const productData = {

@@ -80,6 +80,7 @@ const Dashboard = () => {
           profiles (email),
           order_items (
             quantity,
+            price,
             products (
               name,
               price
@@ -96,6 +97,7 @@ const Dashboard = () => {
           profiles (email),
           order_items (
             quantity,
+            price,
             products (
               name,
               price
@@ -107,14 +109,14 @@ const Dashboard = () => {
 
       const currentRevenue = currentOrders?.reduce((acc, order) => {
         const orderTotal = order.order_items.reduce((itemAcc, item) => {
-          return itemAcc + (item.quantity * item.products.price);
+          return itemAcc + (item.quantity * (item.products?.price || item.price || 0));
         }, 0);
         return acc + orderTotal;
       }, 0) || 0;
 
       const previousRevenue = previousOrders?.reduce((acc, order) => {
         const orderTotal = order.order_items.reduce((itemAcc, item) => {
-          return itemAcc + (item.quantity * item.products.price);
+          return itemAcc + (item.quantity * (item.products?.price || item.price || 0));
         }, 0);
         return acc + orderTotal;
       }, 0) || 0;
@@ -127,16 +129,16 @@ const Dashboard = () => {
       const productSales = {};
       currentOrders?.forEach(order => {
         order.order_items.forEach(item => {
-          const productId = item.products.name;
-          if (!productSales[productId]) {
-            productSales[productId] = {
-              name: item.products.name,
+          const productName = item.products?.name || 'Unknown Product';
+          if (!productSales[productName]) {
+            productSales[productName] = {
+              name: productName,
               quantity: 0,
               revenue: 0
             };
           }
-          productSales[productId].quantity += item.quantity;
-          productSales[productId].revenue += item.quantity * item.products.price;
+          productSales[productName].quantity += item.quantity;
+          productSales[productName].revenue += item.quantity * (item.products?.price || item.price || 0);
         });
       });
 

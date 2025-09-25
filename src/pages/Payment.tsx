@@ -133,7 +133,6 @@ const Payment: React.FC = () => {
         }
       }));
       // Dispatch notification
-      window.dispatchEvent(new CustomEvent('posNotification', {
         detail: {
           type: 'success',
           title: 'M-Pesa Payment Initiated',
@@ -173,7 +172,7 @@ const Payment: React.FC = () => {
   const handleConfirmPayment = async () => {
     const paymentAmountNum = parseFloat(paymentAmount as string);
     if (isNaN(paymentAmountNum) || paymentAmountNum < totalAmount) {
-      alert('Please enter a valid amount that covers the total.');
+      setError('Please enter a valid amount that covers the total.');
       return;
     }
 

@@ -208,6 +208,14 @@ const ProductCard: React.FC<ProductCardProps> = ({
             <p className="text-sm text-neutral-600">
               {!user ? 'Please login to purchase' : 'Contact staff to purchase'}
             </p>
+            {!user && (
+              <button
+                onClick={() => window.location.href = '/login'}
+                className="mt-2 text-xs text-primary hover:text-primary-dark font-medium"
+              >
+                Login Here
+              </button>
+            )}
           </div>
         )}
       </div>

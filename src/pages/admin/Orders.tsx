@@ -8,6 +8,7 @@ import {
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
+  const [productNames, setProductNames] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -26,7 +27,27 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
+    fetchProductNames();
   }, []);
+  
+  const fetchProductNames = async () => {
+    try {
+      const { data: products, error } = await supabase
+        .from('products')
+        .select('id, name');
+      
+      if (error) throw error;
+      
+      const nameMap = {};
+      products?.forEach(product => {
+        nameMap[product.id] = product.name;
+      });
+      
+      setProductNames(nameMap);
+    } catch (error) {
+      console.error('Error fetching product names:', error);
+    }
+  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -164,11 +185,15 @@ const Orders = () => {
       'PENCHIC FARM - ORDER REPORT',
       `Period: ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`,
       '',
-      ['Order ID', 'Customer Email', 'Items', 'Total Amount', 'Payment Method', 'Status', 'Date'].join(','),
+      ['Order ID', 'Customer Email', 'Product Names', 'Quantities', 'Total Amount', 'Payment Method', 'Status', 'Date'].join(','),
       ...filteredOrders.map(order => [
         order.id,
         order.profiles?.email || 'N/A',
-        order.order_items.map(item => `${item.products.name} (${item.quantity})`).join('; '),
+        order.order_items.map(item => {
+          const productName = item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`;
+          return productName;
+        }).join('; '),
+        order.order_items.map(item => item.quantity).join('; '),
         `KES ${order.total.toLocaleString('en-KE')}`,
         order.payments?.[0]?.payment_method.toUpperCase() || 'N/A',
         order.status,
@@ -389,11 +414,13 @@ const Orders = () => {
                         <div key={item.id} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <Package2 className="w-4 h-4 text-neutral-400" />
-                            <span className="text-neutral-900">{item.products.name}</span>
+                            <span className="text-neutral-900">
+                              {item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`}
+                            </span>
                             <span className="text-neutral-500">x {item.quantity}</span>
                           </div>
                           <span className="font-medium text-neutral-900">
-                            KES {(item.products.price * item.quantity).toLocaleString('en-KE')}
+                            KES {((item.products?.price || item.price || 0) * item.quantity).toLocaleString('en-KE')}
                           </span>
                         </div>
                       ))}

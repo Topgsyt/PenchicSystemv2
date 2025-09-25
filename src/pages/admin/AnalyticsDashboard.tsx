@@ -141,16 +141,23 @@ const AnalyticsDashboard: React.FC = () => {
         const productSales = {};
         (currentMonthOrders || []).forEach(order => {
           (order.order_items || []).forEach(item => {
-            const productName = item?.products?.name;
-            if (!productName) return;
-            productSales[productName] = (productSales[productName] || 0) + (item.quantity || 0);
+            const productName = item?.products?.name || 'Unknown Product';
+            if (!productSales[productName]) {
+              productSales[productName] = {
+                name: productName,
+                quantity: 0,
+                revenue: 0
+              };
+            }
+            productSales[productName].quantity += (item.quantity || 0);
+            productSales[productName].revenue += (item.quantity || 0) * (item?.products?.price || 0);
           });
         });
 
         const topProducts = Object.entries(productSales)
-          .sort(([, a], [, b]) => (b as number) - (a as number))
+          .sort(([, a], [, b]) => (b as any).revenue - (a as any).revenue)
           .slice(0, 5)
-          .map(([name, quantity]) => ({ name, quantity }));
+          .map(([name, data]) => ({ name, quantity: (data as any).quantity, revenue: (data as any).revenue }));
 
         setTopSellingProducts(topProducts);
         setLatestOrders(currentMonthOrders?.slice(0, 5) || []);

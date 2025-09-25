@@ -61,7 +61,7 @@ const App: React.FC = () => {
 
       if (fetchError) {
         console.error('Error fetching profile:', fetchError);
-        throw fetchError;
+        return; // Don't throw, just return to prevent auth flow breakage
       }
 
       if (profile) {
@@ -81,7 +81,7 @@ const App: React.FC = () => {
 
         if (checkError) {
           console.error('Error checking for existing profile:', checkError);
-          throw checkError;
+          return;
         }
 
         if (existingProfile) {
@@ -99,7 +99,7 @@ const App: React.FC = () => {
               {
                 id: userId,
                 email: email,
-                // Default role is set by the table definition
+                role: 'customer' // Default role
               }
             ])
             .select('id, email, role')
@@ -116,7 +116,7 @@ const App: React.FC = () => {
 
               if (finalError) {
                 console.error('Error in final profile check:', finalError);
-                throw finalError;
+                return;
               }
 
               if (finalCheck) {
@@ -129,7 +129,7 @@ const App: React.FC = () => {
               }
             }
             console.error('Error creating profile:', insertError);
-            throw insertError;
+            return;
           }
 
           if (newProfile) {
@@ -143,8 +143,6 @@ const App: React.FC = () => {
       }
     } catch (error) {
       console.error('Error in profile management:', error);
-      // Don't throw here - we want to gracefully handle errors
-      // and not break the auth flow
     }
   };
 

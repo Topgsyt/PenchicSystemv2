@@ -71,15 +71,20 @@ export default function Home() {
 
   useEffect(() => {
     const fetchProducts = async () => {
-      const { data, error } = await supabase
-        .from('products')
-        .select('*')
-        .gt('stock', 0)
-        .order('created_at', { ascending: false })
-        .limit(2);
+      try {
+        const { data, error } = await supabase
+          .from('products')
+          .select('*')
+          .gt('stock', 0)
+          .order('created_at', { ascending: false })
+          .limit(2);
 
-      if (!error && data) {
-        setFeaturedProducts(data);
+        if (error) throw error;
+        
+        setFeaturedProducts(data || []);
+      } catch (error) {
+        console.error('Error fetching featured products:', error);
+        setFeaturedProducts([]);
       }
     };
 

@@ -48,6 +48,9 @@ const Sidebar: React.FC<SidebarProps> = ({
       navigate('/login');
     } catch (error) {
       console.error('Error logging out:', error);
+      // Force logout even if there's an error
+      setUser(null);
+      navigate('/login');
     } finally {
       setIsLoggingOut(false);
     }

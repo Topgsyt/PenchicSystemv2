@@ -44,6 +44,10 @@ const Cart = () => {
   }
 
   const handleCheckout = () => {
+    if (cartItems.length === 0) {
+      alert('Your cart is empty. Please add items before checkout.');
+      return;
+    }
     navigate('/checkout');
   };
 
@@ -100,7 +104,7 @@ const Cart = () => {
                     <button
                       onClick={() => updateCartQuantity(item.product.id, item.variant?.id, -1)}
                       className="p-2 hover:bg-neutral-100 text-neutral-800 rounded-l-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={item.quantity <= 1}
+                      disabled={item.quantity <= 1 || loading}
                     >
                       <Minus className="w-4 h-4" />
                     </button>
@@ -110,7 +114,7 @@ const Cart = () => {
                     <button
                       onClick={() => updateCartQuantity(item.product.id, item.variant?.id, 1)}
                       className="p-2 hover:bg-neutral-100 text-neutral-800 rounded-r-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                      disabled={item.quantity >= item.product.stock}
+                      disabled={item.quantity >= item.product.stock || loading}
                     >
                       <Plus className="w-4 h-4" />
                     </button>
@@ -136,7 +140,8 @@ const Cart = () => {
               <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                 <button
                   onClick={clearCart}
-                  className="px-6 py-2 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500"
+                  className="px-6 py-2 text-red-500 hover:bg-red-500 hover:text-white rounded-lg transition-colors border border-red-500 disabled:opacity-50"
+                  disabled={loading}
                 >
                   Clear Cart
                 </button>
@@ -152,7 +157,8 @@ const Cart = () => {
               <div className="mt-6 flex justify-end">
                 <button
                   onClick={handleCheckout}
-                  className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-lg hover:bg-primary-dark transition-colors"
+                  className="flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50"
+                  disabled={loading || cartItems.length === 0}
                 >
                   Proceed to Checkout
                   <ArrowRight className="w-5 h-5" />

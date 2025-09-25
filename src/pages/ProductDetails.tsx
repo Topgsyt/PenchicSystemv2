@@ -85,6 +85,12 @@ const ProductDetails = () => {
       navigate('/login');
       return;
     }
+    
+    if (!canUseCart) {
+      // Show message for customers/guests
+      alert('Cart functionality is only available to staff members. Please contact our staff to make a purchase.');
+      return;
+    }
 
     if (!product) return;
 
@@ -93,7 +99,7 @@ const ProductDetails = () => {
       : null;
 
     if (quantity > (selectedVariantData?.stock ?? product.stock)) {
-      alert('Not enough stock available');
+      alert('Not enough stock available for this quantity');
       return;
     }
 
@@ -103,7 +109,9 @@ const ProductDetails = () => {
       quantity
     });
 
-    navigate('/cart');
+    // Show success message and navigate
+    alert(`${product.name} added to cart successfully!`);
+    setTimeout(() => navigate('/cart'), 500);
   };
 
   const openGoogleMaps = () => {
