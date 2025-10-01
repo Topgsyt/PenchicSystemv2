@@ -3,26 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import AdminLayout from '../../components/admin/AdminLayout';
-import {
-  Plus,
-  Edit2,
-  Trash2,
-  Search,
-  Calendar,
-  Percent,
-  DollarSign,
-  Gift,
-  Tag,
-  AlertCircle,
-  CheckCircle,
-  X,
-  Save,
-  Eye,
-  EyeOff,
-  Package,
-  Clock,
-  Target
-} from 'lucide-react';
+import { Plus, CreditCard as Edit2, Trash2, Search, Calendar, Percent, DollarSign, Gift, Tag, AlertCircle, CheckCircle, X, Save, Eye, EyeOff, Package, Clock, Target } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface Discount {

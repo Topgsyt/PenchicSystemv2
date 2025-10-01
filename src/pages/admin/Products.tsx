@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
 import AdminLayout from '../../components/admin/AdminLayout';
-import { Plus, Edit2, Trash2, Search, Filter, Package2, Image, X } from 'lucide-react';
+import { Plus, CreditCard as Edit2, Trash2, Search, Filter, Package2, Image, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const Products = () => {
@@ -15,6 +15,7 @@ const Products = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('all');
+  const [error, setError] = useState<string | null>(null);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -250,20 +251,20 @@ const Products = () => {
 
         {/* Success/Error Messages */}
         <AnimatePresence>
-          {(submitStatus || error) && (
+          {submitStatus && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className={`p-4 rounded-xl ${
-                (submitStatus === 'success' && !error)
+                submitStatus === 'success' 
                   ? 'bg-green-50 text-green-800 border border-green-200' 
                   : 'bg-red-50 text-red-800 border border-red-200'
               }`}
             >
-              {error || (submitStatus === 'success' 
+              {submitStatus === 'success' 
                 ? 'Product saved successfully!' 
-                : 'Error saving product. Please try again.')
+                : 'Error saving product. Please try again.'
               }
             </motion.div>
           )}

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { UserPlus, Trash2, Shield, Search, Filter, ChevronLeft, ChevronRight, Calendar, Mail, User as UserIcon, Eye, EyeOff, CheckCircle, XCircle, Edit3, X, Save, AlertTriangle, Users, Crown, Briefcase, ShoppingBag } from 'lucide-react';
+import { UserPlus, Trash2, Shield, Search, Filter, ChevronLeft, ChevronRight, Calendar, Mail, User as UserIcon, Eye, EyeOff, CheckCircle, XCircle, CreditCard as Edit3, X, Save, AlertTriangle, Users, Crown, Briefcase, ShoppingBag } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AdminLayout from '../../components/admin/AdminLayout';
 
@@ -209,10 +209,12 @@ const UserManagement = () => {
 
       if (error) throw error;
       fetchUsers();
-      alert('User deleted successfully!');
+      setSuccessMessage('User deleted successfully!');
+      setTimeout(() => setSuccessMessage(''), 3000);
     } catch (error) {
       console.error('Error deleting user:', error);
-      alert(`Error deleting user: ${error.message}`);
+      setErrorMessage(`Error deleting user: ${error.message}`);
+      setTimeout(() => setErrorMessage(''), 5000);
     }
   };
 
@@ -299,17 +301,6 @@ const UserManagement = () => {
       <div className="space-y-6">
         {/* Header Actions */}
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4">
-          {/* Success/Error Messages */}
-          {(successMessage || errorMessage) && (
-            <div className={`w-full p-4 rounded-lg border ${
-              successMessage 
-                ? 'bg-green-50 text-green-800 border-green-200' 
-                : 'bg-red-50 text-red-800 border-red-200'
-            }`}>
-              {successMessage || errorMessage}
-            </div>
-          )}
-          
           <div className="flex flex-col sm:flex-row gap-3 flex-1">
             <div className="relative flex-1 max-w-md">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-neutral-400 w-5 h-5" />
