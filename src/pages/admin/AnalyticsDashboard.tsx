@@ -407,9 +407,10 @@ const AnalyticsDashboard: React.FC = () => {
                     </div>
                     <div className="text-right">
                       <p className="font-bold text-neutral-900">
-                        KES {order.order_items.reduce((acc, item) => 
-                          acc + (item.quantity * item.products.price), 0
-                        ).toLocaleString('en-KE')}
+                        KES {(order.order_items || []).reduce((acc, item) => {
+                          const price = item.products?.price || item.price || 0;
+                          return acc + (item.quantity * price);
+                        }, 0).toLocaleString('en-KE')}
                       </p>
                       <p className="text-sm text-neutral-500">
                         {new Date(order.created_at).toLocaleDateString()}

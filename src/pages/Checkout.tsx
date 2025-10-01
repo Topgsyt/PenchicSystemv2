@@ -80,6 +80,13 @@ const Checkout = () => {
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-neutral-200">
           <div className="p-6 md:p-8">
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
+                {error}
+              </div>
+            )}
+            
             <button
               onClick={() => navigate('/cart')}
               className="flex items-center gap-2 text-neutral-600 hover:text-neutral-900 mb-6 transition-colors"

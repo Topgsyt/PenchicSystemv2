@@ -250,20 +250,20 @@ const Products = () => {
 
         {/* Success/Error Messages */}
         <AnimatePresence>
-          {submitStatus && (
+          {(submitStatus || error) && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               className={`p-4 rounded-xl ${
-                submitStatus === 'success' 
+                (submitStatus === 'success' && !error)
                   ? 'bg-green-50 text-green-800 border border-green-200' 
                   : 'bg-red-50 text-red-800 border border-red-200'
               }`}
             >
-              {submitStatus === 'success' 
+              {error || (submitStatus === 'success' 
                 ? 'Product saved successfully!' 
-                : 'Error saving product. Please try again.'
+                : 'Error saving product. Please try again.')
               }
             </motion.div>
           )}

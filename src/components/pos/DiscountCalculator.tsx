@@ -40,11 +40,6 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
   }, [cartItems, userId]);
 
   const calculateDiscounts = async () => {
-    if (!cartItems?.length) {
-      setAppliedDiscounts([]);
-      onDiscountApplied([]);
-      return;
-    }
 
     if (!cartItems || cartItems.length === 0) {
       setAppliedDiscounts([]);
@@ -57,8 +52,6 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
       const discounts = [];
 
       for (const item of cartItems) {
-        if (!item?.product?.id) continue;
-        
         if (!item.product || !item.product.id) continue;
         
         try {
@@ -70,7 +63,6 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
           if (discountInfo) {
             discounts.push({
               productId: item.product.id,
-              productName: item.product.name || 'Unknown Product',
               productName: item.product.name,
               campaignId: discountInfo.campaign_id,
               discountType: discountInfo.discount_type,
@@ -78,7 +70,6 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
               discountAmount: discountInfo.discount_amount * item.quantity,
               finalPrice: discountInfo.final_price,
               description: discountInfo.offer_description,
-              quantity: item.quantity || 1,
               quantity: item.quantity,
               savings: discountInfo.discount_amount * item.quantity,
               type: discountInfo.discount_type,
@@ -89,16 +80,12 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
         } catch (error) {
           console.error(`Error calculating discount for ${item.product.name}:`, error);
           // Continue with other items even if one fails
-          // Continue with other items even if one fails
         }
       }
       setAppliedDiscounts(discounts);
       onDiscountApplied(discounts);
     } catch (error) {
       console.error('Error calculating discounts:', error);
-      // Don't break the UI, just log the error
-      setAppliedDiscounts([]);
-      onDiscountApplied([]);
       setAppliedDiscounts([]);
       onDiscountApplied([]);
     } finally {
@@ -115,7 +102,7 @@ const DiscountCalculator: React.FC<DiscountCalculatorProps> = ({
   }
 
   return (
-    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 mb-4">
+    <div className="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4 m-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Tag className="w-5 h-5 text-green-600" />

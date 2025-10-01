@@ -132,7 +132,10 @@ const DiscountsOffers = () => {
         .single();
       
       if (productError || !productExists) {
-        throw new Error('Selected product does not exist');
+        setErrorMessage('Selected product does not exist');
+        setTimeout(() => setErrorMessage(''), 5000);
+        setLoading(false);
+        return;
       }
 
       const discountData = {

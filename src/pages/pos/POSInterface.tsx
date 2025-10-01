@@ -832,42 +832,8 @@ const POSInterface: React.FC = () => {
           {/* Products Grid/List */}
           <div className="h-[calc(100%-140px)] overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
-              </div>
-            ) : (
-              <div className={`gap-4 ${
-                viewMode === 'grid' 
-                  ? 'grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5' 
-                  : 'space-y-2'
-              }`}>
-                {filteredProducts.map(product => (
-                  <motion.div
-                    key={product.id}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                    onClick={() => handleAddToCart(product)}
-                    className={`bg-white rounded-lg border border-neutral-200 cursor-pointer hover:shadow-md transition-all ${
-                      viewMode === 'grid' ? 'p-4' : 'p-3 flex items-center gap-4'
-                    }`}
-                  >
-                    <img
-                      src={product.image_url}
-                      alt={product.name}
-                      className={`object-cover rounded ${
-                        viewMode === 'grid' ? 'w-full h-32 mb-3' : 'w-16 h-16'
-                      }`}
-                    />
-                    <div className={viewMode === 'grid' ? 'text-center' : 'flex-1'}>
-                      <h3 className={`font-medium text-neutral-900 ${
-                        viewMode === 'grid' ? 'text-sm mb-2' : 'text-base mb-1'
-                      }`}>
-                        {product.name}
-                      </h3>
-                      <p className="text-primary font-bold">
-                        KES {product.price.toLocaleString()}
-                      </p>
-                      <p className="text-xs text-neutral-500 mt-1">
+                      <ProductPriceDisplay product={product} />
+                    <ProductDiscountBadge product={product} />
                         Stock: {product.stock}
                       </p>
                     </div>
@@ -935,9 +901,29 @@ const POSInterface: React.FC = () => {
                             <h4 className="font-medium text-sm text-neutral-900 truncate">
                               {item.product.name}
                             </h4>
-                            <p className="text-xs text-neutral-600">
-                              KES {item.product.price.toLocaleString()} each
-                            </p>
+                            {(() => {
+                              const itemDiscount = appliedDiscounts.find(d => d.productId === item.product.id);
+                              if (itemDiscount) {
+                                return (
+                                  <div className="space-y-1">
+                                    <p className="text-xs text-neutral-500 line-through">
+                                      KES {itemDiscount.originalPrice.toLocaleString()} each
+                                    </p>
+                                    <p className="text-xs text-red-600 font-medium">
+                                      KES {itemDiscount.finalPrice.toLocaleString()} each
+                                    </p>
+                                    <p className="text-xs text-green-600 font-bold">
+                                      Save KES {(itemDiscount.savings * item.quantity).toLocaleString()}
+                                    </p>
+                                  </div>
+                                );
+                              }
+                              return (
+                                <p className="text-xs text-neutral-600">
+                                  KES {item.product.price.toLocaleString()} each
+                                </p>
+                              );
+                            })()}
                             
                             <div className="flex items-center justify-between mt-2">
                               <div className="flex items-center gap-1">

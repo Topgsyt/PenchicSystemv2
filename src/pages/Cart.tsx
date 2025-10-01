@@ -79,6 +79,13 @@ const Cart = () => {
       <div className="max-w-4xl mx-auto px-4">
         <div className="bg-white rounded-xl shadow-lg overflow-hidden border border-neutral-200">
           <div className="p-6 md:p-8">
+            {/* Error Message */}
+            {error && (
+              <div className="mb-6 p-4 bg-red-50 text-red-800 rounded-lg border border-red-200">
+                {error}
+              </div>
+            )}
+            
             <h1 className="text-3xl font-bold mb-8 text-neutral-900">Shopping Cart</h1>
 
             <div className="space-y-6">

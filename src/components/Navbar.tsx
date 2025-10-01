@@ -10,6 +10,7 @@ const Navbar = () => {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const user = useStore((state) => state.user);
   const cart = useStore((state) => state.cart);
+  const setUser = useStore((state) => state.setUser);
 
   const handleLogout = async () => {
     try {

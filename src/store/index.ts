@@ -37,7 +37,7 @@ export const useStore = create<StoreState>()(
           if (existingItem) {
             const newQuantity = existingItem.quantity + item.quantity;
             if (newQuantity > existingItem.product.stock) {
-              alert('Cannot add more items than available in stock');
+              // Don't use alert in store, let components handle this
               return state;
             }
 
@@ -60,7 +60,7 @@ export const useStore = create<StoreState>()(
             cart: state.cart.map((item) => {
               if (
                 item.product.id === productId &&
-                (variantId ? item.variant?.id === variantId : !item.variant?.id)
+                (variantId ? item.variant?.id === variantId : !item.variant)
               ) {
                 const newQuantity = item.quantity + change;
                 
@@ -88,7 +88,7 @@ export const useStore = create<StoreState>()(
             (item) =>
               !(
                 item.product.id === productId &&
-                (variantId ? item.variant?.id === variantId : !item.variant?.id)
+                (variantId ? item.variant?.id === variantId : !item.variant)
               )
           ),
         })),

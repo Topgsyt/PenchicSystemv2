@@ -119,8 +119,10 @@ const Dashboard = () => {
           return itemAcc + (item.quantity * (item.products?.price || item.price || 0));
         }, 0);
         return acc + orderTotal;
-      }, 0) || 0;
-
+        const orderTotal = (order.order_items || []).reduce((sum, item) => {
+          const price = item.products?.price || item.price || 0;
+          return sum + (item.quantity * price);
+        }, 0);
       const orderStatusCounts = currentOrders?.reduce((acc, order) => {
         acc[order.status] = (acc[order.status] || 0) + 1;
         return acc;

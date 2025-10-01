@@ -74,6 +74,7 @@ const StockManagement = () => {
     }
 
     try {
+      setLoading(true);
       const { error } = await supabase
         .from('products')
         .update({ stock: newStock })
@@ -101,6 +102,8 @@ const StockManagement = () => {
       console.error('Error updating stock:', error);
       setErrorMessage('Failed to update stock');
       setTimeout(() => setErrorMessage(''), 3000);
+    } finally {
+      setLoading(false);
     }
   };
 

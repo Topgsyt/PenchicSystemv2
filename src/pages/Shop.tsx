@@ -125,6 +125,13 @@ export default function Shop() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Search and Filter Bar */}
         <div className="mb-8 bg-white rounded-xl p-6 shadow-lg border border-neutral-200">
+          {/* Error Message */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 text-red-700 rounded-lg border border-red-200">
+              {error}
+            </div>
+          )}
+          
           <div className="flex flex-col md:flex-row gap-4 items-center">
             <div className="relative flex-grow">
               <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 text-neutral-500" />

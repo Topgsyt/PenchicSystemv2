@@ -139,6 +139,7 @@ const App: React.FC = () => {
               role: newProfile.role,
             });
           }
+          // Don't break auth flow on profile errors
         }
       }
     } catch (error) {

@@ -103,8 +103,9 @@ const Payment: React.FC = () => {
   };
 
   const handleConfirmPayment = async () => {
-    if (typeof paymentAmount !== 'number' || paymentAmount < totalAmount) {
-      alert('Please enter a valid amount that covers the total.');
+    const amount = Number(paymentAmount);
+    if (isNaN(amount) || amount < totalAmount) {
+      setError('Please enter a valid amount that covers the total.');
       return;
     }
 
@@ -145,7 +146,7 @@ const Payment: React.FC = () => {
         .insert([
           {
             order_id: order.id,
-            amount: paymentAmount,
+            amount: amount,
             payment_method: 'cash',
             status: 'completed',
           },
@@ -189,8 +190,6 @@ const Payment: React.FC = () => {
       hour: '2-digit',
       minute: '2-digit'
     });
-
-    const change = Number(paymentAmount) - totalAmount;
 
     return (
       <div className="min-h-screen bg-neutral-50 p-8">
@@ -260,10 +259,10 @@ const Payment: React.FC = () => {
                   <span className="text-neutral-900">KES {Number(paymentAmount).toLocaleString('en-KE')}</span>
                 </div>
               )}
-              {change > 0 && (
+              {Number(paymentAmount) > totalAmount && (
                 <div className="flex justify-between items-center text-lg font-bold text-neutral-900">
                   <span>Change:</span>
-                  <span>KES {change.toLocaleString('en-KE')}</span>
+                  <span>KES {(Number(paymentAmount) - totalAmount).toLocaleString('en-KE')}</span>
                 </div>
               )}
             </div>
@@ -386,7 +385,7 @@ const Payment: React.FC = () => {
             {typeof paymentAmount === 'number' && paymentAmount >= totalAmount && (
               <div className="flex justify-between text-green-600">
                 <span>Change:</span>
-                <span>KES {(paymentAmount - totalAmount).toLocaleString('en-KE')}</span>
+                <span>KES {(Number(paymentAmount) - totalAmount).toLocaleString('en-KE')}</span>
               </div>
             )}
           </div>
@@ -400,7 +399,7 @@ const Payment: React.FC = () => {
           <div className="space-y-2">
             <button
               onClick={handleConfirmPayment}
-              disabled={loading || typeof paymentAmount !== 'number' || paymentAmount < totalAmount}
+              disabled={loading || isNaN(Number(paymentAmount)) || Number(paymentAmount) < totalAmount}
               className="w-full bg-green-600 text-white py-2 rounded-lg hover:bg-green-700 transition-colors disabled:bg-neutral-400"
             >
               {loading ? 'Processing...' : 'Confirm Payment'}
