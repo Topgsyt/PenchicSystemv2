@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import DiscountCalculator from '../../components/pos/DiscountCalculator';
+import DiscountBadge from '../../components/DiscountBadge';
 import { Product, CartItem } from '../../types';
 
 const POSInterface = () => {
@@ -51,14 +52,34 @@ const POSInterface = () => {
 
   const fetchProducts = async () => {
     try {
-      const { data, error } = await supabase
+      const { data: productsData, error } = await supabase
         .from('products')
         .select('*')
         .gt('stock', 0)
         .order('name');
 
       if (error) throw error;
-      setProducts(data || []);
+
+      const now = new Date().toISOString();
+      const { data: discounts, error: discountError } = await supabase
+        .from('discounts')
+        .select('*')
+        .lte('start_date', now)
+        .gte('end_date', now);
+
+      if (discountError) {
+        console.error('Error fetching discounts:', discountError);
+      }
+
+      const productsWithDiscounts = (productsData || []).map(product => {
+        const discount = discounts?.find(d => d.product_id === product.id);
+        return {
+          ...product,
+          discount: discount || null
+        };
+      });
+
+      setProducts(productsWithDiscounts);
     } catch (error) {
       console.error('Error fetching products:', error);
     } finally {
@@ -235,26 +256,45 @@ const POSInterface = () => {
 
           <div className="flex-1 overflow-auto p-4">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
-              {filteredProducts.map((product) => (
-                <motion.button
-                  key={product.id}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => handleAddToCart(product)}
-                  className="bg-white rounded-xl border border-neutral-200 p-4 hover:shadow-lg transition-all text-left"
-                >
-                  <div className="aspect-square bg-neutral-100 rounded-lg mb-3 overflow-hidden">
-                    <img
-                      src={product.image_url}
-                      alt={product.name}
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
-                  <h3 className="font-semibold text-neutral-900 mb-1 truncate">{product.name}</h3>
-                  <p className="text-primary font-bold text-lg mb-1">KES {product.price.toLocaleString()}</p>
-                  <p className="text-sm text-neutral-500">Stock: {product.stock}</p>
-                </motion.button>
-              ))}
+              {filteredProducts.map((product) => {
+                const hasDiscount = product.discount;
+                const discountedPrice = hasDiscount
+                  ? product.price - (product.price * product.discount.percentage / 100)
+                  : product.price;
+
+                return (
+                  <motion.button
+                    key={product.id}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    onClick={() => handleAddToCart(product)}
+                    className="bg-white rounded-xl border border-neutral-200 p-4 hover:shadow-lg transition-all text-left relative"
+                  >
+                    {hasDiscount && (
+                      <div className="absolute top-2 right-2 z-10">
+                        <DiscountBadge percentage={product.discount.percentage} />
+                      </div>
+                    )}
+                    <div className="aspect-square bg-neutral-100 rounded-lg mb-3 overflow-hidden">
+                      <img
+                        src={product.image_url}
+                        alt={product.name}
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    <h3 className="font-semibold text-neutral-900 mb-1 truncate">{product.name}</h3>
+                    {hasDiscount ? (
+                      <div className="mb-1">
+                        <p className="text-neutral-400 line-through text-sm">KES {product.price.toLocaleString()}</p>
+                        <p className="text-primary font-bold text-lg">KES {discountedPrice.toLocaleString()}</p>
+                      </div>
+                    ) : (
+                      <p className="text-primary font-bold text-lg mb-1">KES {product.price.toLocaleString()}</p>
+                    )}
+                    <p className="text-sm text-neutral-500">Stock: {product.stock}</p>
+                  </motion.button>
+                );
+              })}
             </div>
 
             {filteredProducts.length === 0 && (
