@@ -8,7 +8,6 @@ import {
 
 const Orders = () => {
   const [orders, setOrders] = useState<any[]>([]);
-  const [productNames, setProductNames] = useState<{ [key: string]: string }>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [filter, setFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState<string>('');
@@ -27,27 +26,7 @@ const Orders = () => {
 
   useEffect(() => {
     fetchOrders();
-    fetchProductNames();
   }, []);
-  
-  const fetchProductNames = async () => {
-    try {
-      const { data: products, error } = await supabase
-        .from('products')
-        .select('id, name');
-      
-      if (error) throw error;
-      
-      const nameMap = {};
-      products?.forEach(product => {
-        nameMap[product.id] = product.name;
-      });
-      
-      setProductNames(nameMap);
-    } catch (error) {
-      console.error('Error fetching product names:', error);
-    }
-  };
 
   const fetchOrders = async () => {
     setLoading(true);
@@ -181,81 +160,24 @@ const Orders = () => {
       return orderDate >= start && orderDate <= end;
     });
 
-    // Calculate accurate totals for the report
-    const reportTotals = filteredOrders.reduce((acc, order) => {
-      const orderTotal = order.order_items.reduce((itemAcc, item) => {
-        const itemPrice = item.products?.price || item.price || 0;
-        return itemAcc + (item.quantity * itemPrice);
-      }, 0);
-      
-      acc.totalOrders += 1;
-      acc.totalRevenue += orderTotal;
-      acc.totalItems += order.order_items.reduce((sum, item) => sum + item.quantity, 0);
-      
-      return acc;
-    }, { totalOrders: 0, totalRevenue: 0, totalItems: 0 });
     const csvContent = [
       'PENCHIC FARM - ORDER REPORT',
       `Period: ${start.toLocaleDateString()} to ${end.toLocaleDateString()}`,
-      `Generated: ${new Date().toLocaleString()}`,
       '',
-      ['Order ID', 'Customer Email', 'Product Names', 'Quantities', 'Item Prices', 'Calculated Total', 'Payment Method', 'Status', 'Date'].join(','),
+      ['Order ID', 'Customer Email', 'Items', 'Total Amount', 'Payment Method', 'Status', 'Date'].join(','),
       ...filteredOrders.map(order => [
         order.id,
         order.profiles?.email || 'N/A',
-        order.order_items.map(item => {
-          const productName = item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`;
-          return productName;
-        }).join('; '),
-        order.order_items.map(item => item.quantity).join('; '),
-        order.order_items.map(item => {
-          const itemPrice = item.products?.price || item.price || 0;
-          return `KES ${itemPrice.toLocaleString('en-KE')}`;
-        }).join('; '),
-        `KES ${order.order_items.reduce((acc, item) => {
-          const itemPrice = item.products?.price || item.price || 0;
-          return acc + (item.quantity * itemPrice);
-        }, 0).toLocaleString('en-KE')}`,
+        order.order_items.map(item => `${item.products.name} (${item.quantity})`).join('; '),
+        `KES ${order.total.toLocaleString('en-KE')}`,
         order.payments?.[0]?.payment_method.toUpperCase() || 'N/A',
         order.status,
         new Date(order.created_at).toLocaleString()
       ].join(',')),
       '',
-      'SUMMARY CALCULATIONS',
-      `Total Orders,${reportTotals.totalOrders}`,
-      `Total Items Sold,${reportTotals.totalItems}`,
-      `Total Revenue (Calculated),KES ${reportTotals.totalRevenue.toLocaleString('en-KE')}`,
-      `Average Order Value,KES ${reportTotals.totalOrders > 0 ? (reportTotals.totalRevenue / reportTotals.totalOrders).toLocaleString('en-KE') : '0'}`,
-      `Average Items per Order,${reportTotals.totalOrders > 0 ? (reportTotals.totalItems / reportTotals.totalOrders).toFixed(1) : '0'}`,
-      '',
-      'PRODUCT BREAKDOWN',
-      ...(() => {
-        const productSales = {};
-        filteredOrders.forEach(order => {
-          order.order_items.forEach(item => {
-            const productName = item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`;
-            const itemPrice = item.products?.price || item.price || 0;
-            const itemTotal = item.quantity * itemPrice;
-            
-            if (!productSales[productName]) {
-              productSales[productName] = {
-                quantity: 0,
-                revenue: 0,
-                orders: new Set()
-              };
-            }
-            productSales[productName].quantity += item.quantity;
-            productSales[productName].revenue += itemTotal;
-            productSales[productName].orders.add(order.id);
-          });
-        });
-        
-        return Object.entries(productSales)
-          .sort(([,a], [,b]) => b.revenue - a.revenue)
-          .map(([productName, data]) => 
-            `${productName},${data.quantity} units,KES ${data.revenue.toLocaleString('en-KE')},${data.orders.size} orders`
-          );
-      })()
+      `Total Orders,${filteredOrders.length}`,
+      `Total Revenue,KES ${orderStats.totalRevenue.toLocaleString('en-KE')}`,
+      `Average Order Value,KES ${orderStats.averageOrder.toLocaleString('en-KE')}`
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv' });
@@ -467,13 +389,11 @@ const Orders = () => {
                         <div key={item.id} className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <Package2 className="w-4 h-4 text-neutral-400" />
-                            <span className="text-neutral-900">
-                              {item.products?.name || productNames[item.product_id] || `Product ID: ${item.product_id}`}
-                            </span>
+                            <span className="text-neutral-900">{item.products.name}</span>
                             <span className="text-neutral-500">x {item.quantity}</span>
                           </div>
                           <span className="font-medium text-neutral-900">
-                            KES {((item.products?.price || item.price || 0) * item.quantity).toLocaleString('en-KE')}
+                            KES {(item.products.price * item.quantity).toLocaleString('en-KE')}
                           </span>
                         </div>
                       ))}
