@@ -12,6 +12,7 @@ export default function Shop() {
   const [quantities, setQuantities] = useState<{ [key: string]: number }>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
+  const [error, setError] = useState<string>('');
   const addToCart = useStore((state) => state.addToCart);
   const user = useStore((state) => state.user);
   const navigate = useNavigate();
@@ -39,6 +40,7 @@ export default function Shop() {
       }
     } catch (error) {
       console.error('Error:', error);
+      setError('Failed to load products. Please try again.');
     } finally {
       setLoading(false);
     }

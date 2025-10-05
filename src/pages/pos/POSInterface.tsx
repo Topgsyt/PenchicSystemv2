@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useStore } from '../../store';
 import { supabase } from '../../lib/supabase';
@@ -15,7 +15,8 @@ import {
   User,
   LogOut,
   X,
-  ChevronLeft,
+  Maximize,
+  Minimize,
   Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -31,6 +32,7 @@ const POSInterface = () => {
   const removeFromCart = useStore((state) => state.removeFromCart);
   const updateCartQuantity = useStore((state) => state.updateCartQuantity);
   const clearCart = useStore((state) => state.clearCart);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,6 +43,7 @@ const POSInterface = () => {
   const [processing, setProcessing] = useState(false);
   const [appliedDiscounts, setAppliedDiscounts] = useState<any[]>([]);
   const [showMobileCart, setShowMobileCart] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   useEffect(() => {
     if (!user || (user.role !== 'admin' && user.role !== 'worker')) {
@@ -50,6 +53,15 @@ const POSInterface = () => {
 
   useEffect(() => {
     fetchProducts();
+  }, []);
+
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
   }, []);
 
   const fetchProducts = async () => {
@@ -119,6 +131,22 @@ const POSInterface = () => {
 
   const calculateTotal = () => {
     return calculateSubtotal() - calculateDiscountTotal();
+  };
+
+  const toggleFullscreen = async () => {
+    if (!document.fullscreenElement) {
+      try {
+        await containerRef.current?.requestFullscreen();
+      } catch (err) {
+        console.error('Error attempting to enable fullscreen:', err);
+      }
+    } else {
+      try {
+        await document.exitFullscreen();
+      } catch (err) {
+        console.error('Error attempting to exit fullscreen:', err);
+      }
+    }
   };
 
   const handleCheckout = async () => {
@@ -345,7 +373,7 @@ const POSInterface = () => {
   );
 
   return (
-    <div className="min-h-screen bg-neutral-50">
+    <div ref={containerRef} className="min-h-screen bg-neutral-50">
       <div className="flex h-screen">
         <div className="flex-1 flex flex-col overflow-hidden">
           <div className="bg-white border-b border-neutral-200 p-4">
@@ -356,6 +384,13 @@ const POSInterface = () => {
                   <User className="w-5 h-5 text-neutral-500" />
                   <span className="text-sm text-neutral-600">{user?.email}</span>
                 </div>
+                <button
+                  onClick={toggleFullscreen}
+                  className="p-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors"
+                  title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+                >
+                  {isFullscreen ? <Minimize className="w-5 h-5" /> : <Maximize className="w-5 h-5" />}
+                </button>
                 <button
                   onClick={() => navigate('/admin/dashboard')}
                   className="flex items-center gap-2 px-3 lg:px-4 py-2 bg-neutral-100 text-neutral-700 rounded-lg hover:bg-neutral-200 transition-colors text-sm"
@@ -389,6 +424,16 @@ const POSInterface = () => {
                   </option>
                 ))}
               </select>
+
+              <button
+                onClick={() => setShowMobileCart(true)}
+                className="lg:hidden flex items-center gap-2 px-3 py-2 bg-primary text-white rounded-xl hover:bg-primary-dark transition-colors"
+              >
+                <Menu className="w-5 h-5" />
+                <span className="bg-white text-primary rounded-full w-6 h-6 flex items-center justify-center text-sm font-bold">
+                  {cart.length}
+                </span>
+              </button>
             </div>
           </div>
 
@@ -453,7 +498,7 @@ const POSInterface = () => {
         </div>
       </div>
 
-      {cart.length > 0 && (
+      {cart.length > 0 && !showMobileCart && (
         <button
           onClick={() => setShowMobileCart(true)}
           className="lg:hidden fixed bottom-4 right-4 bg-primary text-white p-4 rounded-full shadow-lg z-40 flex items-center gap-2"
@@ -472,7 +517,7 @@ const POSInterface = () => {
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="lg:hidden fixed inset-0 bg-white z-50"
+            className="lg:hidden fixed inset-y-0 right-0 w-full sm:w-96 bg-white z-50 shadow-2xl"
           >
             <CartPanel />
           </motion.div>
