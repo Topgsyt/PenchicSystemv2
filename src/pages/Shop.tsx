@@ -30,13 +30,32 @@ export default function Shop() {
 
       if (error) throw error;
 
+      const now = new Date().toISOString();
+      const { data: discounts, error: discountError } = await supabase
+        .from('discounts')
+        .select('*')
+        .lte('start_date', now)
+        .gte('end_date', now);
+
+      if (discountError) {
+        console.error('Error fetching discounts:', discountError);
+      }
+
       if (data) {
+        const productsWithDiscounts = data.map(product => {
+          const discount = discounts?.find(d => d.product_id === product.id);
+          return {
+            ...product,
+            discount: discount || null
+          };
+        });
+
         const initialQuantities = {};
-        data.forEach(product => {
+        productsWithDiscounts.forEach(product => {
           initialQuantities[product.id] = 1;
         });
         setQuantities(initialQuantities);
-        setProducts(data);
+        setProducts(productsWithDiscounts);
       }
     } catch (error) {
       console.error('Error:', error);
@@ -187,6 +206,11 @@ export default function Shop() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredProducts.map((product) => {
             const stockStatus = getStockStatus(product.stock);
+            const hasDiscount = product.discount;
+            const discountedPrice = hasDiscount
+              ? product.price - (product.price * product.discount.percentage / 100)
+              : product.price;
+
             return (
               <div
                 key={product.id}
@@ -194,6 +218,11 @@ export default function Shop() {
               >
                 <Link to={`/product/${product.id}`} className="block">
                   <div className="relative aspect-square overflow-hidden">
+                    {hasDiscount && (
+                      <div className="absolute top-3 right-3 z-10 bg-red-500 text-white px-3 py-1 rounded-lg text-sm font-bold shadow-lg">
+                        -{product.discount.percentage}% OFF
+                      </div>
+                    )}
                     <img
                       src={product.image_url}
                       alt={product.name}
@@ -221,7 +250,17 @@ export default function Shop() {
                   </p>
 
                   <div className="flex items-center justify-between mb-4">
-                    <p className="text-2xl font-bold text-neutral-900">{formatPrice(product.price)}</p>
+                    <div>
+                      {hasDiscount ? (
+                        <div>
+                          <p className="text-sm text-neutral-400 line-through">{formatPrice(product.price)}</p>
+                          <p className="text-2xl font-bold text-primary">{formatPrice(Math.round(discountedPrice))}</p>
+                          <p className="text-sm text-green-600 font-semibold">Save {product.discount.percentage}%</p>
+                        </div>
+                      ) : (
+                        <p className="text-2xl font-bold text-neutral-900">{formatPrice(product.price)}</p>
+                      )}
+                    </div>
                     <div className={`flex items-center gap-2 ${stockStatus.color}`}>
                       <AlertCircle className="w-4 h-4" />
                       <span className="text-sm font-medium">{stockStatus.text}</span>

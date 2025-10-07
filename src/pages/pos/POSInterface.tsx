@@ -22,6 +22,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import DiscountCalculator from '../../components/pos/DiscountCalculator';
 import DiscountBadge from '../../components/DiscountBadge';
+import ReceiptPrinter from '../../components/pos/ReceiptPrinter';
 import { Product, CartItem } from '../../types';
 
 const POSInterface = () => {
@@ -44,6 +45,8 @@ const POSInterface = () => {
   const [appliedDiscounts, setAppliedDiscounts] = useState<any[]>([]);
   const [showMobileCart, setShowMobileCart] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [completedOrder, setCompletedOrder] = useState<any>(null);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   useEffect(() => {
     if (!user || (user.role !== 'admin' && user.role !== 'worker')) {
@@ -158,6 +161,8 @@ const POSInterface = () => {
     setProcessing(true);
     try {
       const totalAmount = calculateTotal();
+      const subtotalAmount = calculateSubtotal();
+      const discountAmount = calculateDiscountTotal();
 
       const { data: order, error: orderError } = await supabase
         .from('orders')
@@ -229,11 +234,34 @@ const POSInterface = () => {
           ]);
       }
 
+      const receiptItems = cart.map(item => {
+        const discountInfo = appliedDiscounts.find(d => d.productId === item.product.id);
+        const discountPerItem = discountInfo ? discountInfo.discountAmount / item.quantity : 0;
+        return {
+          name: item.product.name,
+          quantity: item.quantity,
+          price: item.product.price,
+          discount: discountPerItem,
+          total: (item.product.price - discountPerItem) * item.quantity
+        };
+      });
+
+      setCompletedOrder({
+        orderId: order.id,
+        items: receiptItems,
+        subtotal: subtotalAmount,
+        discount: discountAmount,
+        total: totalAmount,
+        paymentMethod,
+        cashierEmail: user?.email || '',
+        date: new Date()
+      });
+
       clearCart();
       setShowCheckout(false);
       setAppliedDiscounts([]);
       setShowMobileCart(false);
-      alert('Order completed successfully!');
+      setShowReceipt(true);
       fetchProducts();
     } catch (error) {
       console.error('Error processing order:', error);
@@ -637,6 +665,65 @@ const POSInterface = () => {
                   {processing ? 'Processing...' : 'Confirm'}
                 </button>
               </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showReceipt && completedOrder && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-white rounded-2xl p-6 w-full max-w-md shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-neutral-900">Order Complete!</h2>
+                <button
+                  onClick={() => {
+                    setShowReceipt(false);
+                    setCompletedOrder(null);
+                  }}
+                  className="p-2 hover:bg-neutral-100 rounded-lg transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="mb-6 text-center">
+                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <CreditCard className="w-8 h-8 text-green-600" />
+                </div>
+                <p className="text-neutral-600">Payment processed successfully</p>
+                <p className="text-2xl font-bold text-neutral-900 mt-2">
+                  KES {completedOrder.total.toLocaleString()}
+                </p>
+              </div>
+
+              <ReceiptPrinter
+                {...completedOrder}
+                onPrintComplete={() => {
+                  setShowReceipt(false);
+                  setCompletedOrder(null);
+                }}
+              />
+
+              <button
+                onClick={() => {
+                  setShowReceipt(false);
+                  setCompletedOrder(null);
+                }}
+                className="w-full mt-3 px-6 py-3 bg-neutral-100 text-neutral-700 rounded-xl hover:bg-neutral-200 transition-colors"
+              >
+                Close
+              </button>
             </motion.div>
           </motion.div>
         )}
