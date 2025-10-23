@@ -55,30 +55,32 @@ export const useStore = create<StoreState>()(
         }),
       updateCartQuantity: (productId, variantId, change) =>
         set((state) => {
+          const item = state.cart.find(
+            (cartItem) =>
+              cartItem.product.id === productId &&
+              (variantId !== undefined
+                ? cartItem.variant?.id === variantId
+                : !cartItem.variant)
+          );
+
+          if (!item) return state;
+
+          const newQuantity = item.quantity + change;
+
+          if (newQuantity < 1 || newQuantity > item.product.stock) {
+            return state;
+          }
+
           return {
             ...state,
-            cart: state.cart.map((item) => {
-              if (
-                item.product.id === productId &&
-                (variantId ? item.variant?.id === variantId : !item.variant)
-              ) {
-                const newQuantity = item.quantity + change;
-                
-                if (newQuantity < 1) {
-                  return item;
-                }
-                
-                if (newQuantity > item.product.stock) {
-                  return item;
-                }
-
-                return {
-                  ...item,
-                  quantity: newQuantity,
-                };
-              }
-              return item;
-            }),
+            cart: state.cart.map((cartItem) =>
+              cartItem.product.id === productId &&
+              (variantId !== undefined
+                ? cartItem.variant?.id === variantId
+                : !cartItem.variant)
+                ? { ...cartItem, quantity: newQuantity }
+                : cartItem
+            ),
           };
         }),
       removeFromCart: (productId, variantId) =>
